@@ -78,3 +78,16 @@
 
 The commit SHA is generated after this report and is provided in the final
 handoff to the parent agent.
+
+## Fix round 1 — canonical EU best-before enum
+
+- Review finding: the EU `date_type` cell exposed `best_before_end` as if it
+  could be a second machine-readable enum value.
+- Change: the cell now contains exactly canonical `best_before`; Annex X
+  phrases `best before …` and `best before end …` remain only in explanatory
+  prose as label variants of `date_type = best_before`.
+- Scope and evidence gate are unchanged: the same ISO countries and sources
+  remain, and all five registry rows are still `research_required`.
+- Evidence: both plan `rg` commands passed; targeted checks found exactly one
+  canonical ``| `best_before` —`` cell, no `best_before_end` identifier, five
+  `research_required` data rows, and a clean `git diff --check`.
