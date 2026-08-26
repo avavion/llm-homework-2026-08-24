@@ -1,7 +1,8 @@
 # Локальная среда backend
 
-Среда предназначена только для локальной разработки. Она запускает Go API и
-PostgreSQL во внутренней Docker-сети; PostgreSQL не публикует порт на хост.
+Среда предназначена только для локальной разработки. API доступен с хоста по
+опубликованному порту и также подключён к внутренней сети PostgreSQL;
+PostgreSQL не публикует порт на хост.
 
 ## Версии
 
@@ -15,7 +16,8 @@ PostgreSQL во внутренней Docker-сети; PostgreSQL не публи
 2. При необходимости измените безопасные локальные значения в `.env`.
    Не добавляйте этот файл в Git.
 3. Запустите среду: `make up`.
-4. Проверьте API: `curl --fail http://localhost:${API_PORT:-8080}/healthz`.
+4. Проверьте API, загрузив порт из `.env`:
+   `set -a && . ./.env && set +a && curl --fail "http://localhost:${API_PORT}/healthz"`.
 5. Остановите среду и удалите локальные данные PostgreSQL: `make down`.
 
 `DATABASE_URL` внутри Compose обращается к хосту `postgres`. Значения
@@ -38,15 +40,17 @@ PostgreSQL во внутренней Docker-сети; PostgreSQL не публи
 
 ## Точка интеграции BE-001
 
-Dockerfile и Makefile ожидают, что следующий пакет добавит `go.mod`, `go.sum`,
-`cmd/api` и каталог `migrations/`. После этого API обязан слушать
-`API_PORT` и предоставлять `GET /healthz`; `make migrate-up` использует его
-контейнерную переменную `DATABASE_URL` и SQL-файлы из `migrations/`.
+Dockerfile и Makefile ожидают, что следующий пакет добавит `go.mod`, `cmd/api`
+и каталог `migrations/`; `go.sum` будет создан модулем при необходимости.
+BE-001 использует миграции `000001_init.up.sql` и `000001_init.down.sql`.
+После этого API обязан слушать `API_PORT` и предоставлять `GET /healthz`;
+`make migrate-up` использует контейнерную переменную `DATABASE_URL`, бинарник
+`/migrate` и SQL-файлы из `migrations/`.
 
 До выполнения BE-001 `make up`, `make test`, cross-build цели и `make
-migrate-up` намеренно неработоспособны: в рабочем дереве отсутствует Go API и
-миграции. Конфигурацию Compose уже можно проверять командой `docker compose
-config`.
+migrate-up` намеренно неработоспособны: в рабочем дереве отсутствуют `go.mod`,
+Go API и миграции. Конфигурацию Compose уже можно проверять командой `docker
+compose config`.
 
 ## Ограничения
 

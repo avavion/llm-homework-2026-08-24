@@ -15,7 +15,7 @@ logs:
 	$(COMPOSE) logs -f
 
 migrate-up:
-	$(COMPOSE) exec -T api sh -ec 'migrate -path /migrations -database "$$DATABASE_URL" up'
+	$(COMPOSE) exec -T api sh -ec '/migrate -path /migrations -database "$$DATABASE_URL" up'
 
 test:
 	$(GO) test ./...

@@ -2,7 +2,7 @@ FROM golang:1.25.0-alpine3.22 AS build
 
 WORKDIR /src
 
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 RUN GOBIN=/out go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
 
