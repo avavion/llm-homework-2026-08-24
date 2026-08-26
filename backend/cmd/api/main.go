@@ -13,11 +13,16 @@ import (
 
 	"llm-homework/backend/internal/config"
 	httpserver "llm-homework/backend/internal/http"
+	"llm-homework/backend/internal/notification"
+	"llm-homework/backend/internal/regulation"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const shutdownTimeout = 10 * time.Second
+const (
+	shutdownTimeout           = 10 * time.Second
+	notificationCheckInterval = time.Minute
+)
 
 func main() {
 	configuration, err := config.Load()
@@ -44,6 +49,14 @@ func main() {
 		Addr:    configuration.APIAddress,
 		Handler: httpserver.NewServer(db),
 	}
+
+	workerCtx, cancelWorker := context.WithCancel(context.Background())
+	defer cancelWorker()
+	notificationService := notification.NewService(
+		notification.NewRepository(db), regulation.NewRepository(),
+		notification.NewRepository(db), notification.NewDevSender(),
+	)
+	go notification.NewWorker(notificationService, notificationCheckInterval).Run(workerCtx)
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
