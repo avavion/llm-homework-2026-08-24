@@ -15,9 +15,10 @@ import (
 	"llm-homework/backend/internal/regulation"
 )
 
-func NewServer(db *sql.DB) http.Handler {
+func NewServer(db *sql.DB, allowedOrigins []string) http.Handler {
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(cors(allowedOrigins))
 
 	router.GET("/healthz", func(c *gin.Context) {
 		c.Data(http.StatusOK, "application/json", []byte("{\"status\":\"ok\"}\n"))

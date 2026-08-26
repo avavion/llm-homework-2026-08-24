@@ -100,6 +100,32 @@ func TestApproveAndForeignOwnerAndDoubleApprove(t *testing.T) {
 	}
 }
 
+func TestGetDraftReturnsFieldsAndHidesForeignDrafts(t *testing.T) {
+	repository := newMemoryRepository()
+	router := newTestRouter(NewService(repository, fakeOCR{}, fakeLLM{}))
+	owner := uuid.New()
+	stranger := uuid.New()
+
+	name := "Milk"
+	draft, _ := repository.Create(context.Background(), owner, DraftFields{Name: &name}, "text", "photo.jpg")
+
+	ownRequest := httptest.NewRequest(http.MethodGet, "/v1/product-drafts/"+draft.ID.String(), nil)
+	ownRequest.Header.Set("X-Test-Account", owner.String())
+	ownRecorder := httptest.NewRecorder()
+	router.ServeHTTP(ownRecorder, ownRequest)
+	if ownRecorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d, body=%s", ownRecorder.Code, http.StatusOK, ownRecorder.Body.String())
+	}
+
+	foreignRequest := httptest.NewRequest(http.MethodGet, "/v1/product-drafts/"+draft.ID.String(), nil)
+	foreignRequest.Header.Set("X-Test-Account", stranger.String())
+	foreignRecorder := httptest.NewRecorder()
+	router.ServeHTTP(foreignRecorder, foreignRequest)
+	if foreignRecorder.Code != http.StatusNotFound {
+		t.Fatalf("foreign status = %d, want %d", foreignRecorder.Code, http.StatusNotFound)
+	}
+}
+
 func TestRejectReturnsNoContentAndCreatesNoProduct(t *testing.T) {
 	repository := newMemoryRepository()
 	router := newTestRouter(NewService(repository, fakeOCR{}, fakeLLM{}))

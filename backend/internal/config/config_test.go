@@ -28,6 +28,33 @@ func TestLoadReadsDatabaseURLAndAPIPort(t *testing.T) {
 	}
 }
 
+func TestLoadDefaultsFrontendOrigins(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://app:password@postgres:5432/app?sslmode=disable")
+	t.Setenv("FRONTEND_ORIGINS", "")
+
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if len(config.FrontendOrigins) != 2 {
+		t.Fatalf("FrontendOrigins = %v, want the two local dev defaults", config.FrontendOrigins)
+	}
+}
+
+func TestLoadReadsFrontendOriginsList(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://app:password@postgres:5432/app?sslmode=disable")
+	t.Setenv("FRONTEND_ORIGINS", "https://app.example.com, https://staging.example.com")
+
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	want := []string{"https://app.example.com", "https://staging.example.com"}
+	if len(config.FrontendOrigins) != len(want) || config.FrontendOrigins[0] != want[0] || config.FrontendOrigins[1] != want[1] {
+		t.Fatalf("FrontendOrigins = %v, want %v", config.FrontendOrigins, want)
+	}
+}
+
 func TestLoadDefaultsAPIPort(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://app:password@postgres:5432/app?sslmode=disable")
 	t.Setenv("API_PORT", "")

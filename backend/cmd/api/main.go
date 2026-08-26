@@ -47,7 +47,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    configuration.APIAddress,
-		Handler: httpserver.NewServer(db),
+		Handler: httpserver.NewServer(db, configuration.FrontendOrigins),
 	}
 
 	workerCtx, cancelWorker := context.WithCancel(context.Background())

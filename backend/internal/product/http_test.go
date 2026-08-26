@@ -69,7 +69,7 @@ func TestCreateListAndGetRoundTrip(t *testing.T) {
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create status = %d, want %d, body=%s", created.Code, http.StatusCreated, created.Body.String())
 	}
-	var createdBody response
+	var createdBody PublicProduct
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestCreateListAndGetRoundTrip(t *testing.T) {
 	if list.Code != http.StatusOK {
 		t.Fatalf("list status = %d, want %d", list.Code, http.StatusOK)
 	}
-	var listBody []response
+	var listBody []PublicProduct
 	if err := json.Unmarshal(list.Body.Bytes(), &listBody); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestForeignProductIsNotVisible(t *testing.T) {
 	created := performAs(router, owner, http.MethodPost, "/v1/products", map[string]any{
 		"name": "Milk", "date_type": "use_by", "expiry_date": time.Now().Add(24 * time.Hour),
 	})
-	var createdBody response
+	var createdBody PublicProduct
 	_ = json.Unmarshal(created.Body.Bytes(), &createdBody)
 
 	rr := performAs(router, stranger, http.MethodGet, "/v1/products/"+createdBody.ID.String(), nil)
@@ -116,14 +116,14 @@ func TestUseAndDiscardProduceDistinctStatuses(t *testing.T) {
 	first := performAs(router, accountID, http.MethodPost, "/v1/products", map[string]any{
 		"name": "Milk", "date_type": "use_by", "expiry_date": time.Now().Add(24 * time.Hour),
 	})
-	var firstBody response
+	var firstBody PublicProduct
 	_ = json.Unmarshal(first.Body.Bytes(), &firstBody)
 
 	used := performAs(router, accountID, http.MethodPost, "/v1/products/"+firstBody.ID.String()+"/use", nil)
 	if used.Code != http.StatusOK {
 		t.Fatalf("use status = %d, want %d", used.Code, http.StatusOK)
 	}
-	var usedBody response
+	var usedBody PublicProduct
 	_ = json.Unmarshal(used.Body.Bytes(), &usedBody)
 	if usedBody.Status != "used" || usedBody.CompletedAt == nil {
 		t.Fatalf("used body = %+v", usedBody)

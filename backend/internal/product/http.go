@@ -35,7 +35,7 @@ type createRequest struct {
 	AlertThresholdMinutes *int      `json:"alert_threshold_minutes"`
 }
 
-type response struct {
+type PublicProduct struct {
 	ID                    uuid.UUID  `json:"id"`
 	Name                  string     `json:"name"`
 	DateType              DateType   `json:"date_type"`
@@ -87,7 +87,7 @@ func createHandler(service ServiceAPI, resolveAccount AccountResolver) gin.Handl
 		if writeServiceError(c, err) {
 			return
 		}
-		c.JSON(http.StatusCreated, toResponse(created))
+		c.JSON(http.StatusCreated, ToPublicProduct(created))
 	}
 }
 
@@ -103,9 +103,9 @@ func listHandler(service ServiceAPI, resolveAccount AccountResolver) gin.Handler
 			return
 		}
 
-		results := make([]response, 0, len(items))
+		results := make([]PublicProduct, 0, len(items))
 		for _, item := range items {
-			results = append(results, toResponse(item))
+			results = append(results, ToPublicProduct(item))
 		}
 		c.JSON(http.StatusOK, results)
 	}
@@ -128,7 +128,7 @@ func getHandler(service ServiceAPI, resolveAccount AccountResolver) gin.HandlerF
 		if writeServiceError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, toResponse(found))
+		c.JSON(http.StatusOK, ToPublicProduct(found))
 	}
 }
 
@@ -149,7 +149,7 @@ func completeHandler(service ServiceAPI, resolveAccount AccountResolver, status 
 		if writeServiceError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, toResponse(completed))
+		c.JSON(http.StatusOK, ToPublicProduct(completed))
 	}
 }
 
@@ -174,8 +174,8 @@ func writeError(c *gin.Context, status int, message string) {
 	c.AbortWithStatusJSON(status, gin.H{"error": message})
 }
 
-func toResponse(item Product) response {
-	return response{
+func ToPublicProduct(item Product) PublicProduct {
+	return PublicProduct{
 		ID:                    item.ID,
 		Name:                  item.Name,
 		DateType:              item.DateType,

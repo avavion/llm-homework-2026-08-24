@@ -49,8 +49,30 @@ type draftResponse struct {
 
 func RegisterRoutes(router gin.IRouter, service ServiceAPI, resolveAccount AccountResolver) {
 	router.POST("/v1/product-drafts/recognize", recognizeHandler(service, resolveAccount))
+	router.GET("/v1/product-drafts/:id", getHandler(service, resolveAccount))
 	router.POST("/v1/product-drafts/:id/approve", approveHandler(service, resolveAccount))
 	router.POST("/v1/product-drafts/:id/reject", rejectHandler(service, resolveAccount))
+}
+
+func getHandler(service ServiceAPI, resolveAccount AccountResolver) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accountID, ok := resolveAccount(c)
+		if !ok {
+			return
+		}
+
+		draftID, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			writeError(c, http.StatusNotFound, ErrNotFound.Error())
+			return
+		}
+
+		draft, err := service.Get(c.Request.Context(), accountID, draftID)
+		if writeServiceError(c, err) {
+			return
+		}
+		c.JSON(http.StatusOK, toDraftResponse(draft))
+	}
 }
 
 func recognizeHandler(service ServiceAPI, resolveAccount AccountResolver) gin.HandlerFunc {
@@ -115,7 +137,7 @@ func approveHandler(service ServiceAPI, resolveAccount AccountResolver) gin.Hand
 		if writeServiceError(c, err) {
 			return
 		}
-		c.JSON(http.StatusCreated, created)
+		c.JSON(http.StatusCreated, product.ToPublicProduct(created))
 	}
 }
 
