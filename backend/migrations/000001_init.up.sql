@@ -1,0 +1,1 @@
+-- golang-migrate creates and owns the schema_migrations bookkeeping table.

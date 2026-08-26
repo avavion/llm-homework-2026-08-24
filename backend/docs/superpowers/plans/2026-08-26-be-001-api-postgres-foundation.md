@@ -63,7 +63,7 @@ Expected: PASS.
 ### Task 2: Add migration and developer workflow
 
 **Files:**
-- Create: `backend/migrations/000001_init.sql`
+- Create: `backend/migrations/000001_init.up.sql`, `backend/migrations/000001_init.down.sql`
 - Modify: `backend/docker-compose.yml`, `backend/Makefile`
 - Test: full Go checks
 
@@ -72,7 +72,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Add the initial migration**
 
-Create only the migration bookkeeping table required by the chosen migration command; feature tables belong to later BE tasks.
+Create the `golang-migrate` pair `000001_init.up.sql` and `000001_init.down.sql`. The up migration creates only the migration bookkeeping required by the selected command; the down migration reverses only that change. Feature tables belong to later BE tasks.
 
 - [ ] **Step 2: Wire the service command paths**
 
@@ -86,10 +86,9 @@ Expected: PASS against the local PostgreSQL service.
 
 - [ ] **Step 4: Commit**
 
-Run: `git add backend/go.mod backend/cmd/api backend/internal backend/migrations/000001_init.sql backend/docker-compose.yml backend/Makefile && git commit -m "feat(backend): add API and postgres foundation"`
+Run: `git add backend/go.mod backend/go.sum backend/cmd/api backend/internal backend/migrations/000001_init.up.sql backend/migrations/000001_init.down.sql backend/docker-compose.yml backend/Makefile && git commit -m "feat(backend): add API and postgres foundation"`
 
 ## Self-review
 
 - Coverage: health response, configuration, connection setup, migration command, and verification commands are covered.
 - Account and product schemas are intentionally deferred.
-

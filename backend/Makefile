@@ -3,7 +3,7 @@ GO ?= go
 BIN_DIR ?= bin
 API_PACKAGE ?= ./cmd/api
 
-.PHONY: up down logs migrate-up test build-linux-amd64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64
+.PHONY: up down logs run migrate-up test build-linux-amd64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64
 
 up:
 	$(COMPOSE) up --build -d
@@ -14,8 +14,10 @@ down:
 logs:
 	$(COMPOSE) logs -f
 
+run: up
+
 migrate-up:
-	$(COMPOSE) exec -T api sh -ec '/migrate -path /migrations -database "$$DATABASE_URL" up'
+	$(COMPOSE) exec -T api sh -ec '/migrate -source file:///migrations -database "$$DATABASE_URL" up'
 
 test:
 	$(GO) test ./...

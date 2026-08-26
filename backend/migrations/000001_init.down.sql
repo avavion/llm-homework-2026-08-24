@@ -1,0 +1,1 @@
+-- No application schema is created by the initial migration.
