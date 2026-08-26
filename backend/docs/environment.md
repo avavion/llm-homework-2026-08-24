@@ -31,6 +31,7 @@ PostgreSQL не публикует порт на хост.
 | `make up` | Собрать и запустить API и PostgreSQL в фоне. |
 | `make down` | Остановить Compose и удалить `postgres_data` (`down -v`). |
 | `make logs` | Следить за логами сервисов. |
+| `make run` | Собрать и запустить Compose API из `cmd/api` вместе с PostgreSQL. |
 | `make migrate-up` | Выполнить SQL-файлы из `/migrations` в API-контейнере. |
 | `make test` | Запустить `go test ./...`. |
 | `make build-linux-amd64` | Создать `bin/api-linux-amd64`. |
@@ -40,17 +41,15 @@ PostgreSQL не публикует порт на хост.
 
 ## Точка интеграции BE-001
 
-Dockerfile и Makefile ожидают, что следующий пакет добавит `go.mod`, `cmd/api`
-и каталог `migrations/`; `go.sum` будет создан модулем при необходимости.
-BE-001 использует миграции `000001_init.up.sql` и `000001_init.down.sql`.
-После этого API обязан слушать `API_PORT` и предоставлять `GET /healthz`;
-`make migrate-up` использует контейнерную переменную `DATABASE_URL`, бинарник
-`/migrate` и SQL-файлы из `migrations/`.
+BE-001 поставляет `go.mod`, API из `cmd/api`, health endpoint `GET /healthz` и
+миграции `000001_init.up.sql` / `000001_init.down.sql`. API слушает `API_PORT`;
+`make run` запускает его через Compose, а `make migrate-up` использует
+контейнерную переменную `DATABASE_URL`, бинарник `/migrate` и SQL-файлы из
+`migrations/`.
 
-До выполнения BE-001 `make up`, `make test`, cross-build цели и `make
-migrate-up` намеренно неработоспособны: в рабочем дереве отсутствуют `go.mod`,
-Go API и миграции. Конфигурацию Compose уже можно проверять командой `docker
-compose config`.
+Начальная миграция оставляет bookkeeping `golang-migrate` самому инструменту
+и не создаёт прикладных таблиц. Схемы accounts, products и другие feature
+schemas относятся к следующим backend-задачам.
 
 ## Ограничения
 
