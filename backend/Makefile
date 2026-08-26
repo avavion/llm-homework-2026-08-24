@@ -2,8 +2,9 @@ COMPOSE ?= docker compose
 GO ?= go
 BIN_DIR ?= bin
 API_PACKAGE ?= ./cmd/api
+INTEGRATION_COMPOSE_PROJECT ?= llm-homework-backend-integration
 
-.PHONY: up down logs run migrate-up test build-linux-amd64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64
+.PHONY: up down logs run migrate-up test test-integration build-linux-amd64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64
 
 up:
 	$(COMPOSE) up --build -d
@@ -21,6 +22,16 @@ migrate-up:
 
 test:
 	$(GO) test ./...
+
+test-integration:
+	@set -eu; \
+	cleanup() { $(COMPOSE) -p $(INTEGRATION_COMPOSE_PROJECT) --profile test down -v --remove-orphans; }; \
+	trap cleanup EXIT HUP INT TERM; \
+	POSTGRES_DB=llm_homework \
+	POSTGRES_USER=app \
+	POSTGRES_PASSWORD=local-dev-password \
+	DATABASE_URL='postgres://app:local-dev-password@postgres:5432/llm_homework?sslmode=disable' \
+	$(COMPOSE) -p $(INTEGRATION_COMPOSE_PROJECT) --profile test up --build --abort-on-container-exit --exit-code-from auth-integration-test auth-integration-test
 
 build-linux-amd64:
 	mkdir -p $(BIN_DIR)

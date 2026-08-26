@@ -2,9 +2,10 @@
 
 ## Status
 
-Ready for independent review. Both Task 1 and Task 2 from
+Implementation commit `fad6b19` completed both Task 1 and Task 2 from
 `backend/docs/superpowers/plans/2026-08-26-be-003-authentication-and-sessions.md`
-are implemented. BE-004 and later backend tasks were not started.
+and fix round 1 is ready for independent re-review. BE-004 and later backend
+tasks were not started.
 
 ## Scope delivered
 
@@ -181,3 +182,108 @@ No BE-002 or shared documentation was changed.
 - Account isolation for future resources is enabled by a typed account in
   request context; product-specific 404/401 enforcement remains owned by
   BE-004, as stated by the plan.
+
+## Fix round 1 — technical review findings
+
+### Findings and root causes
+
+1. **Cookie survived a failed server-side logout.** `logoutHandler` returned
+   the `500` response before calling `http.SetCookie`, so the browser received
+   no expired cookie when `DeleteSession` failed. The cookie is now expired
+   before attempting repository deletion; the server still returns `500` to
+   report that server-side invalidation was not confirmed.
+2. **The PostgreSQL evidence was not reproducible from the repository.** The
+   initial report recorded a manual isolated Compose flow, but no committed
+   target rebuilt that evidence. A tagged integration test, Compose test
+   service, `make test-integration`, and exact environment documentation now
+   provide that path.
+3. **Expiry and context identity had coverage gaps.** Expiry was enforced by
+   the repository/fake but had no named service or HTTP test. The fake also
+   assigned every account the zero UUID, so the middleware test could not
+   detect an incorrect account ID. The fake now creates unique UUIDs and the
+   context test asserts both ID and e-mail.
+
+### Fix-round TDD evidence
+
+Logout error-path RED before changing production code:
+
+```text
+go test ./internal/auth -run TestLogoutExpiresCookieWhenSessionDeletionFails -count=1 -v
+http_test.go:178: cookie count = 0, want 1
+FAIL
+```
+
+After moving cookie expiration ahead of `Service.Logout`:
+
+```text
+=== RUN   TestLogoutExpiresCookieWhenSessionDeletionFails
+--- PASS: TestLogoutExpiresCookieWhenSessionDeletionFails (0.00s)
+PASS
+```
+
+Integration workflow RED before adding Make/Compose orchestration:
+
+```text
+make: *** No rule to make target `test-integration'. Stop.
+```
+
+The expiry behavior already existed, so its new characterization tests passed
+against production immediately. A mutation check temporarily removed only the
+expiry predicate from the in-memory repository; both tests then failed on the
+observable contract:
+
+```text
+TestSessionEndpointRejectsExpiredSession: status code = 200, want 401
+TestAccountForSessionRejectsExpiredSession: error = <nil>, want ErrUnauthenticated
+```
+
+Restoring the predicate returned both tests to GREEN. No production mutation
+was retained.
+
+### Reproducible PostgreSQL integration architecture
+
+`backend/internal/auth/postgres_integration_test.go` is opt-in with the
+`integration` build tag. The Compose `auth-integration-test` service uses the
+existing Dockerfile `build` stage, joins only the internal `database` network,
+applies repository migrations with `/out/migrate`, then runs:
+
+```text
+go test -tags=integration -count=1 ./internal/auth
+```
+
+`make test-integration` assigns a dedicated Compose project and safe internal
+test database credentials, then uses a shell trap to remove containers,
+network, and volume on success or failure. PostgreSQL has no published host
+port. The committed integration test covers:
+
+- concurrent case-variant registration with exactly one success and one
+  `ErrEmailTaken`;
+- normalized e-mail and Argon2id/non-plaintext password persistence;
+- exact SHA-256(raw token) persistence and absence of the raw token in DB;
+- expired-session denial;
+- logout deletion of the session row.
+
+The target passed twice from a clean disposable volume. The final run was
+started with an intentionally invalid external `DATABASE_URL`; Make's fixed
+internal test URL overrode it, and the output confirmed:
+
+```text
+1/u init
+2/u accounts_auth
+ok llm-homework/backend/internal/auth 0.881s
+```
+
+The cleanup output confirmed removal of both test containers, the internal
+network, and `llm-homework-backend-integration_postgres_data`.
+
+The final pre-commit rerun on the complete tree also applied both migrations,
+reported `ok llm-homework/backend/internal/auth 0.866s`, and removed the
+disposable Compose resources.
+
+### Technical-review metadata
+
+The task register defines the review process but has no per-row status field.
+Therefore only BE-003 task metadata was updated. It records the completed
+review outcome as `technical_review: changes_required` and fix round 1 as ready
+for independent re-review. The implementation does not self-assign
+`technical_review: approved`; the reviewer owns that transition.

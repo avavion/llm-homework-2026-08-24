@@ -83,6 +83,8 @@ func loginHandler(service ServiceAPI) http.HandlerFunc {
 
 func logoutHandler(service ServiceAPI) http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
+		http.SetCookie(w, expiredSessionCookie())
+
 		cookie, err := request.Cookie(SessionCookieName)
 		if err == nil {
 			if err := service.Logout(request.Context(), cookie.Value); err != nil {
@@ -91,7 +93,6 @@ func logoutHandler(service ServiceAPI) http.HandlerFunc {
 			}
 		}
 
-		http.SetCookie(w, expiredSessionCookie())
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"llm-homework/backend/internal/account"
+
+	"github.com/google/uuid"
 )
 
 func TestRegisterNormalizesAndRejectsCaseVariant(t *testing.T) {
@@ -134,9 +136,29 @@ func TestLogoutDeletesSessionByTokenHash(t *testing.T) {
 	}
 }
 
+func TestAccountForSessionRejectsExpiredSession(t *testing.T) {
+	repository := newMemoryRepository()
+	service := NewService(repository)
+	ctx := context.Background()
+
+	if _, err := service.Register(ctx, "user@example.com", "correct horse battery staple"); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	rawToken, _, err := service.Login(ctx, "user@example.com", "correct horse battery staple")
+	if err != nil {
+		t.Fatalf("Login() error = %v", err)
+	}
+	repository.sessions[0].ExpiresAt = time.Now().Add(-time.Second)
+
+	if _, err := service.AccountForSession(ctx, rawToken); !errors.Is(err, ErrUnauthenticated) {
+		t.Fatalf("AccountForSession(expired) error = %v, want ErrUnauthenticated", err)
+	}
+}
+
 type memoryRepository struct {
-	accounts map[string]account.Record
-	sessions []account.Session
+	accounts         map[string]account.Record
+	sessions         []account.Session
+	deleteSessionErr error
 }
 
 func newMemoryRepository() *memoryRepository {
@@ -150,7 +172,7 @@ func (repository *memoryRepository) CreateAccount(_ context.Context, email, pass
 		return account.Account{}, account.ErrEmailTaken
 	}
 	record := account.Record{
-		Account:      account.Account{Email: email},
+		Account:      account.Account{ID: uuid.New(), Email: email},
 		PasswordHash: passwordHash,
 	}
 	repository.accounts[email] = record
@@ -172,6 +194,9 @@ func (repository *memoryRepository) CreateSession(_ context.Context, session acc
 }
 
 func (repository *memoryRepository) DeleteSession(_ context.Context, tokenHash []byte) error {
+	if repository.deleteSessionErr != nil {
+		return repository.deleteSessionErr
+	}
 	for index, session := range repository.sessions {
 		if bytes.Equal(session.TokenHash, tokenHash) {
 			repository.sessions = append(repository.sessions[:index], repository.sessions[index+1:]...)

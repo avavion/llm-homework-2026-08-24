@@ -34,6 +34,7 @@ PostgreSQL не публикует порт на хост.
 | `make run` | Собрать и запустить Compose API из `cmd/api` вместе с PostgreSQL. |
 | `make migrate-up` | Выполнить SQL-файлы из `/migrations` в API-контейнере. |
 | `make test` | Запустить `go test ./...`. |
+| `make test-integration` | В изолированном Compose-проекте применить миграции и запустить PostgreSQL auth integration test, затем удалить тестовые контейнеры и volume. |
 | `make build-linux-amd64` | Создать `bin/api-linux-amd64`. |
 | `make build-darwin-amd64` | Создать `bin/api-darwin-amd64`. |
 | `make build-darwin-arm64` | Создать `bin/api-darwin-arm64`. |
@@ -50,6 +51,42 @@ BE-001 поставляет `go.mod`, API из `cmd/api`, health endpoint `GET /
 Начальная миграция оставляет bookkeeping `golang-migrate` самому инструменту
 и не создаёт прикладных таблиц. Схемы accounts, products и другие feature
 schemas относятся к следующим backend-задачам.
+
+## PostgreSQL integration tests
+
+Воспроизводимая проверка BE-003 запускается из `backend/` одной командой:
+
+```sh
+make test-integration
+```
+
+Она использует отдельный Compose project
+`llm-homework-backend-integration`, поднимает только PostgreSQL и tagged Go
+test-контейнер, применяет миграции через тот же `golang-migrate`, затем запускает
+`go test -tags=integration -count=1 ./internal/auth`. PostgreSQL остаётся только
+во внутренней сети Compose и не публикует порт на хост. После любого исхода
+команды trap удаляет тестовые контейнеры, сети и volume, поэтому проверка не
+зависит от ранее сохранённого состояния. Make target также принудительно задаёт
+безопасные локальные test credentials и внутренний host `postgres`, поэтому
+унаследованный из shell `DATABASE_URL` не может перенаправить тест на внешнюю БД.
+
+Эквивалентный Compose-сценарий с тем же обязательным cleanup:
+
+```sh
+integration_project=llm-homework-backend-integration
+cleanup() {
+  docker compose -p "$integration_project" --profile test down -v --remove-orphans
+}
+trap cleanup EXIT HUP INT TERM
+
+POSTGRES_DB=llm_homework \
+POSTGRES_USER=app \
+POSTGRES_PASSWORD=local-dev-password \
+DATABASE_URL='postgres://app:local-dev-password@postgres:5432/llm_homework?sslmode=disable' \
+docker compose -p "$integration_project" --profile test up \
+  --build --abort-on-container-exit \
+  --exit-code-from auth-integration-test auth-integration-test
+```
 
 ## Ограничения
 

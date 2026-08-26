@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoginSetsSafeSessionCookie(t *testing.T) {
@@ -93,6 +94,9 @@ func TestSessionMiddlewareAttachesAccountToContext(t *testing.T) {
 		if current.Email != registered.Email {
 			t.Errorf("context account email = %q, want %q", current.Email, registered.Email)
 		}
+		if current.ID != registered.ID {
+			t.Errorf("context account ID = %s, want %s", current.ID, registered.ID)
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	request := httptest.NewRequest(http.MethodGet, "/protected", nil)
@@ -153,12 +157,48 @@ func TestLogoutClearsCookieAndInvalidatesSession(t *testing.T) {
 	if response.Code != http.StatusNoContent {
 		t.Fatalf("status code = %d, want %d", response.Code, http.StatusNoContent)
 	}
-	cookies := response.Result().Cookies()
-	if len(cookies) != 1 || cookies[0].MaxAge >= 0 || cookies[0].Value != "" {
-		t.Fatalf("logout cookie = %#v, want cleared cookie", cookies)
-	}
+	assertExpiredSessionCookie(t, response)
 	if _, err := service.AccountForSession(context.Background(), rawToken); !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("AccountForSession() after logout error = %v, want ErrUnauthenticated", err)
+	}
+}
+
+func TestLogoutExpiresCookieWhenSessionDeletionFails(t *testing.T) {
+	repository := newMemoryRepository()
+	repository.deleteSessionErr = errors.New("database unavailable")
+	request := httptest.NewRequest(http.MethodPost, "/v1/auth/logout", nil)
+	request.AddCookie(&http.Cookie{Name: SessionCookieName, Value: "opaque-session-token"})
+	response := httptest.NewRecorder()
+
+	NewHandler(NewService(repository)).ServeHTTP(response, request)
+
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("status code = %d, want %d", response.Code, http.StatusInternalServerError)
+	}
+	assertExpiredSessionCookie(t, response)
+}
+
+func TestSessionEndpointRejectsExpiredSession(t *testing.T) {
+	repository := newMemoryRepository()
+	service := NewService(repository)
+	ctx := context.Background()
+
+	if _, err := service.Register(ctx, "user@example.com", "correct horse battery staple"); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	rawToken, _, err := service.Login(ctx, "user@example.com", "correct horse battery staple")
+	if err != nil {
+		t.Fatalf("Login() error = %v", err)
+	}
+	repository.sessions[0].ExpiresAt = time.Now().Add(-time.Second)
+	request := httptest.NewRequest(http.MethodGet, "/v1/auth/session", nil)
+	request.AddCookie(&http.Cookie{Name: SessionCookieName, Value: rawToken})
+	response := httptest.NewRecorder()
+
+	NewHandler(service).ServeHTTP(response, request)
+
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("status code = %d, want %d", response.Code, http.StatusUnauthorized)
 	}
 }
 
@@ -189,4 +229,19 @@ func jsonRequest(t *testing.T, method, target string, body any) *http.Request {
 	request := httptest.NewRequest(method, target, bytes.NewReader(encoded))
 	request.Header.Set("Content-Type", "application/json")
 	return request
+}
+
+func assertExpiredSessionCookie(t *testing.T, response *httptest.ResponseRecorder) {
+	t.Helper()
+	cookies := response.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("cookie count = %d, want 1", len(cookies))
+	}
+	cookie := cookies[0]
+	if cookie.Name != SessionCookieName || cookie.Value != "" || cookie.MaxAge >= 0 {
+		t.Fatalf("logout cookie = %#v, want expired %q cookie", cookie, SessionCookieName)
+	}
+	if !cookie.HttpOnly || !cookie.Secure || cookie.SameSite != http.SameSiteLaxMode {
+		t.Fatalf("unsafe expired session cookie: %#v", cookie)
+	}
 }

@@ -1,6 +1,6 @@
 # BE-003 — Регистрация, вход и изоляция сессий
 
-**Исполнитель:** Senior Backend Developer · **Статус:** draft · **Зависимости:** BE-001 · **Timebox:** 3 дня
+**Исполнитель:** Senior Backend Developer · **Статус:** `technical_review: changes_required`; fix round 1 готов к повторной проверке · **Зависимости:** BE-001 · **Timebox:** 3 дня
 
 **План:** [2026-08-26-be-003-authentication-and-sessions.md](../superpowers/plans/2026-08-26-be-003-authentication-and-sessions.md)
 
@@ -20,3 +20,12 @@
 
 **Ревью Developer:** миграции, Argon2id, cookie, срок сессии и негативные тесты.  
 **QA:** повторная регистрация, неверный пароль, подмена/отсутствие токена и чужой ID.
+
+## Техническое ревью
+
+- **Дата:** 2026-08-26.
+- **Результат:** `changes_required` — очистка cookie при ошибке server-side
+  logout, воспроизводимый PostgreSQL integration path и явное покрытие expiry и
+  account ID context.
+- **Fix round 1:** реализован и проверен; ожидает независимой повторной проверки
+  перед сменой статуса на `technical_review: approved`.
