@@ -32,6 +32,27 @@ services:
     networks:
       - database
 
+  auth-integration-test:
+    profiles:
+      - test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://app:local-dev-password@postgres:5432/llm_homework?sslmode=disable}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        /out/migrate -source file:///src/migrations -database "$$DATABASE_URL" up
+        go test -tags=integration -count=1 ./internal/auth
+    networks:
+      - database
+
 networks:
   api:
   database:
