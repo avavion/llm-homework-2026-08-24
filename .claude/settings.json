@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/session_hook.py\" start",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/session_hook.py\" start --agent \"Claude Code\"",
             "timeout": 5
           }
         ]

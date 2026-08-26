@@ -30,6 +30,7 @@ def parse_arguments():
     parser.add_argument("--cwd")
     parser.add_argument("--session-id")
     parser.add_argument("--timestamp")
+    parser.add_argument("--agent")
     return parser.parse_args()
 
 
@@ -58,59 +59,99 @@ def route_report_directory(project_root, working_directory):
 
 
 def find_report(project_root, session_id):
-    expected_line = "session_id: " + session_id
+    expected_lines = (
+        "session_id: " + session_id,
+        "<!-- session_id: " + session_id + " -->",
+    )
     for directory in report_directories(project_root):
         if not directory.is_dir():
             continue
         for report in sorted(directory.glob("session-*.md")):
             try:
-                if expected_line in report.read_text(encoding="utf-8").splitlines():
+                if any(
+                    expected_line in report.read_text(encoding="utf-8").splitlines()
+                    for expected_line in expected_lines
+                ):
                     return report
             except OSError:
                 continue
     return None
 
 
-def report_text(session_id, department, timestamp):
-    return """---
-hook: session.started
-session_id: {session_id}
-department: {department}
-started_at: {timestamp}
-completed_at:
----
+def report_text(session_id, department, timestamp, agent):
+    session_time = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+    return """<!-- hook: session.started -->
+<!-- session_id: {session_id} -->
+<!-- department: {department} -->
+<!-- started_at: {timestamp} -->
+<!-- completed_at: -->
 
-## Запрос
+# Сессия: {session_time}
 
-## Действия
+- **Агент:** {agent}
+- **Отдел:** {department}
+- **Статус:** активна
 
-## Источники
+## Промпты
 
-## Созданные артефакты
+<!-- Для каждой содержательной реплики добавляйте один из блоков ниже.
+### <USER PROMPT>
+> ...
+### <AGENT ANSWER>
+> ...
+### <AGENT QUESTION>
+> ...
+### <USER ANSWER>
+> ...
+-->
 
-## Выводы
+## Размышления
 
-## Риски
+## Использованные инструменты
 
-## Самокритика
+| Инструмент | Действие | Зачем |
+|---|---|---|
 
-## Следующий шаг
-""".format(session_id=session_id, department=department, timestamp=timestamp)
+## Изменения в проекте
+
+## Финальный вердикт
+
+**Закрыто:**
+
+**Не закрыто:**
+
+**Что сломано:**
+
+**С чего продолжать:**
+""".format(
+        session_id=session_id,
+        department=department,
+        timestamp=timestamp,
+        session_time=session_time,
+        agent=agent,
+    )
 
 
 def finalize_report(report, timestamp):
     lines = report.read_text(encoding="utf-8").splitlines(keepends=True)
-    if not lines or lines[0].strip() != "---":
-        raise ValueError("report has no YAML frontmatter: " + str(report))
-    for index in range(1, len(lines)):
-        if lines[index].strip() == "---":
-            break
-        if lines[index].startswith("hook:"):
-            lines[index] = "hook: session.completed\n"
-        elif lines[index].startswith("completed_at:"):
-            lines[index] = "completed_at: " + timestamp + "\n"
+    if lines and lines[0].strip() == "---":
+        for index in range(1, len(lines)):
+            if lines[index].strip() == "---":
+                break
+            if lines[index].startswith("hook:"):
+                lines[index] = "hook: session.completed\n"
+            elif lines[index].startswith("completed_at:"):
+                lines[index] = "completed_at: " + timestamp + "\n"
+        else:
+            raise ValueError("report has unterminated YAML frontmatter: " + str(report))
     else:
-        raise ValueError("report has unterminated YAML frontmatter: " + str(report))
+        for index, line in enumerate(lines):
+            if line.startswith("<!-- hook:"):
+                lines[index] = "<!-- hook: session.completed -->\n"
+            elif line.startswith("<!-- completed_at:"):
+                lines[index] = "<!-- completed_at: " + timestamp + " -->\n"
+            elif line.startswith("- **Статус:** активна"):
+                lines[index] = "- **Статус:** завершена\n"
     report.write_text("".join(lines), encoding="utf-8")
 
 
@@ -134,14 +175,20 @@ def run():
 
     department, directory = route_report_directory(project_root, working_directory)
     timestamp = arguments.timestamp or datetime.now().astimezone().isoformat(timespec="seconds")
+    agent = arguments.agent or payload.get("agent") or "Не указан"
     filename_stem = "session-" + datetime.fromisoformat(timestamp).strftime("%Y-%m-%d-%H%M%S")
     directory.mkdir(parents=True, exist_ok=True)
     report = directory / (filename_stem + ".md")
     suffix = 2
-    while report.exists():
-        report = directory / (filename_stem + "-" + str(suffix) + ".md")
-        suffix += 1
-    report.write_text(report_text(session_id, department, timestamp), encoding="utf-8")
+    content = report_text(session_id, department, timestamp, agent)
+    while True:
+        try:
+            with report.open("x", encoding="utf-8") as created_report:
+                created_report.write(content)
+            return
+        except FileExistsError:
+            report = directory / (filename_stem + "-" + str(suffix) + ".md")
+            suffix += 1
 
 
 def main():

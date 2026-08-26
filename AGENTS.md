@@ -36,14 +36,25 @@
 
 ## Сессионные отчёты
 
-После содержательной работы отчёт направляется по рабочей директории: корень проекта — в `sessions/`, `backend/` — в `backend/sessions/`, `frontend/` — в `frontend/sessions/`, `shared/` — в `shared/sessions/`. Подробный контракт — в [`shared/docs/WORKSPACE_GUIDE.md`](shared/docs/WORKSPACE_GUIDE.md). Не перезаписывайте существующий отчёт другой сессии.
+После содержательной работы отчёт направляется по рабочей директории: корень проекта — в `sessions/`, `backend/` — в `backend/sessions/`, `frontend/` — в `frontend/sessions/`, `shared/` — в `shared/sessions/`. Подробный контракт — в [`shared/docs/WORKSPACE_GUIDE.md`](shared/docs/WORKSPACE_GUIDE.md). Не перезаписывайте существующий отчёт другой сессии. В `## Промпты` последовательно фиксируйте все содержательные реплики только блоками `<USER PROMPT>`, `<AGENT ANSWER>`, `<AGENT QUESTION>` и `<USER ANSWER>`; в финале заполните размышления, инструменты, изменения и вердикт.
 
 Агенты, не использующие Claude Code, обязаны вызывать переносимый hook в начале и в конце сессии:
 
 ```sh
-python3 scripts/session_hook.py start --cwd "$PWD" --session-id "<runtime-session-id>"
+python3 scripts/session_hook.py start --cwd "$PWD" --session-id "<runtime-session-id>" --agent "<agent and model>"
 python3 scripts/session_hook.py end --cwd "$PWD" --session-id "<runtime-session-id>"
 ```
+
+Перед передачей результата агент обязан запустить единый валидатор:
+
+```sh
+python3 scripts/validate_session_reports.py --project-root .
+```
+
+Ненулевой код валидатора означает незавершённую сессию. Локальные инструкции
+`backend/AGENTS.md`, `frontend/AGENTS.md` и `shared/AGENTS.md` повторяют этот
+контракт для каждого отдела и имеют приоритет для работы в соответствующей
+директории.
 
 ## Самокритика
 

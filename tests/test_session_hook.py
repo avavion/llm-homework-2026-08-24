@@ -10,10 +10,101 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 HOOK = PROJECT_ROOT / "scripts" / "session_hook.py"
+VALIDATOR = PROJECT_ROOT / "scripts" / "validate_session_reports.py"
 TIMESTAMP = "2026-08-25T23:45:16+03:00"
 
 
 class SessionHookTest(unittest.TestCase):
+    def test_validator_accepts_completed_reports_in_all_scopes(self):
+        """Every new-format report in root and departments passes one validator."""
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            for scope, department in (
+                ("sessions", "root"),
+                ("backend/sessions", "backend"),
+                ("frontend/sessions", "frontend"),
+                ("shared/sessions", "shared"),
+            ):
+                report = project_root / scope / "session-2026-08-26-100000.md"
+                report.parent.mkdir(parents=True, exist_ok=True)
+                report.write_text(self.valid_report(department), encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(VALIDATOR), "--project-root", str(project_root)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_validator_rejects_new_report_without_dialogue(self):
+        """A new-format report cannot pass with template-only dialogue content."""
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            report = project_root / "backend/sessions/session-2026-08-26-100000.md"
+            report.parent.mkdir(parents=True)
+            report.write_text(
+                "<!-- hook: session.completed -->\n\n# Сессия: 2026-08-26 10:00:00\n"
+                "\n- **Агент:** Backend Agent\n- **Отдел:** backend\n"
+                "- **Статус:** завершена\n\n## Промпты\n\n## Размышления\n"
+                "\n## Использованные инструменты\n\n## Изменения в проекте\n"
+                "\n## Финальный вердикт\n\n**Закрыто:**\n\n**Не закрыто:**"
+                "\n\n**Что сломано:**\n\n**С чего продолжать:**\n",
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, str(VALIDATOR), "--project-root", str(project_root)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(str(report), result.stderr)
+
+    def test_start_creates_conversational_template_with_agent(self):
+        """A new report contains the agreed dialogue journal skeleton and agent."""
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(HOOK),
+                    "start",
+                    "--project-root",
+                    str(project_root),
+                    "--cwd",
+                    str(project_root),
+                    "--session-id",
+                    "dialogue-1",
+                    "--timestamp",
+                    TIMESTAMP,
+                    "--agent",
+                    "Codex GPT-5.6 Terra Med",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            report = project_root / "sessions" / "session-2026-08-25-234516.md"
+            content = report.read_text(encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("# Сессия: 2026-08-25 23:45:16", content)
+            self.assertIn("- **Агент:** Codex GPT-5.6 Terra Med", content)
+            self.assertIn("- **Статус:** активна", content)
+            self.assertIn("## Промпты", content)
+            self.assertIn("### <USER PROMPT>", content)
+            self.assertIn("### <AGENT ANSWER>", content)
+            self.assertIn("### <AGENT QUESTION>", content)
+            self.assertIn("### <USER ANSWER>", content)
+            self.assertIn("## Размышления", content)
+            self.assertIn("## Использованные инструменты", content)
+            self.assertIn("## Изменения в проекте", content)
+            self.assertIn("## Финальный вердикт", content)
+
     def test_start_routes_backend(self):
         """A backend session creates its report only in backend/sessions."""
         with tempfile.TemporaryDirectory() as directory:
@@ -144,6 +235,20 @@ class SessionHookTest(unittest.TestCase):
             self.assertIn("hook: session.completed", content)
             self.assertRegex(content, r"completed_at: .+")
 
+    def test_end_marks_new_dialogue_template_completed(self):
+        """An end event updates the visible status of the new report template."""
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            self.run_hook("start", project_root, project_root, "new-finish-1", TIMESTAMP)
+            result = self.run_hook("end", project_root, project_root, "new-finish-1")
+
+            report = project_root / "sessions" / "session-2026-08-25-234516.md"
+            content = report.read_text(encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("<!-- hook: session.completed -->", content)
+            self.assertRegex(content, r"<!-- completed_at: .+ -->")
+            self.assertIn("- **Статус:** завершена", content)
+
     def test_start_finds_existing_report_in_another_department(self):
         """An existing root report prevents a duplicate backend report for its ID."""
         with tempfile.TemporaryDirectory() as directory:
@@ -200,10 +305,10 @@ class SessionHookTest(unittest.TestCase):
             results = [process.communicate() for process in processes]
             reports = list((project_root / "sessions").glob("*.md"))
             found_ids = {
-                line.removeprefix("session_id: ")
+                line.removeprefix("<!-- session_id: ").removesuffix(" -->")
                 for report in reports
                 for line in report.read_text().splitlines()
-                if line.startswith("session_id: ")
+                if line.startswith("<!-- session_id: ")
             }
             self.assertTrue(all(process.returncode == 0 for process in processes), results)
             self.assertEqual(len(reports), len(session_ids))
@@ -249,6 +354,49 @@ class SessionHookTest(unittest.TestCase):
             text=True,
             check=False,
         )
+
+    @staticmethod
+    def valid_report(department):
+        return """<!-- hook: session.completed -->
+
+# Сессия: 2026-08-26 10:00:00
+
+- **Агент:** Test Agent
+- **Отдел:** {department}
+- **Статус:** завершена
+
+## Промпты
+
+### <USER PROMPT>
+> Сделать проверку.
+
+### <AGENT ANSWER>
+> Проверка сделана.
+
+## Размышления
+
+Решение проверено.
+
+## Использованные инструменты
+
+| Инструмент | Действие | Зачем |
+|---|---|---|
+| unittest | Проверка | Подтверждение |
+
+## Изменения в проекте
+
+- Тестовый отчёт.
+
+## Финальный вердикт
+
+**Закрыто:** да
+
+**Не закрыто:** нет
+
+**Что сломано:** ничего
+
+**С чего продолжать:** завершить
+""".format(department=department)
 
 
 if __name__ == "__main__":
