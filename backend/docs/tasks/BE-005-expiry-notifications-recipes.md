@@ -2,6 +2,8 @@
 
 **Исполнитель:** Senior Backend Developer · **Статус:** draft · **Зависимости:** BE-002, BE-004 · **Timebox:** 4 дня
 
+**План:** [2026-08-26-be-005-expiry-notifications-recipes.md](../superpowers/plans/2026-08-26-be-005-expiry-notifications-recipes.md)
+
 ## SMART-цель
 
 Рассчитывать статусы по подтверждённой конфигурации, отправлять идемпотентные e-mail от 60 минут и исключать просроченный `use_by` из собственных рецептов.
@@ -17,4 +19,3 @@
 
 **Ревью Developer:** конфигурация, idempotency, часовые пояса и границы времени.  
 **QA:** повторный scheduler, даты, неверный порог и недоступный mail adapter.
-

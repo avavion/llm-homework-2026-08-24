@@ -4,6 +4,7 @@
 **Статус:** draft  
 **Зависимости:** нет  
 **Timebox:** до 2 рабочих дней после технического одобрения
+**План:** [2026-08-26-be-000-devops-environment.md](../superpowers/plans/2026-08-26-be-000-devops-environment.md)
 
 ## SMART-цель
 
@@ -30,4 +31,3 @@ Senior Backend Developer проверяет совместимость Docker Co
 ## QA-проверка
 
 Senior QA запускает среду в чистой локальной директории, проверяет отсутствие секретов в compose/документации/логах, health endpoint, остановку с удалением volume и наличие всех четырёх артефактов cross-build.
-

@@ -2,6 +2,8 @@
 
 **Исполнитель:** Senior Backend Developer · **Статус:** draft · **Зависимости:** BE-003, BE-004 · **Timebox:** 4 дня
 
+**План:** [2026-08-26-be-006-photo-drafts-approval.md](../superpowers/plans/2026-08-26-be-006-photo-drafts-approval.md)
+
 ## SMART-цель
 
 Реализовать распознавание фото, которое создаёт только черновик, а продукт появляется исключительно после `approve` владельца.
@@ -17,4 +19,3 @@
 
 **Ревью Developer:** изоляция drafts, адаптеры, валидация approve.  
 **QA:** пустое фото, плохой OCR/LLM, timeout, чужой ID, reject и двойной approve.
-
