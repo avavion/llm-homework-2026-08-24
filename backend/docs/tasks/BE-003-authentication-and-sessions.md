@@ -1,6 +1,6 @@
 # BE-003 — Регистрация, вход и изоляция сессий
 
-**Исполнитель:** Senior Backend Developer · **Статус:** `technical_review: changes_required`; fix round 1 готов к повторной проверке · **Зависимости:** BE-001 · **Timebox:** 3 дня
+**Исполнитель:** Senior Backend Developer · **Статус:** `technical_review: approved` · **Зависимости:** BE-001 · **Timebox:** 3 дня
 
 **План:** [2026-08-26-be-003-authentication-and-sessions.md](../superpowers/plans/2026-08-26-be-003-authentication-and-sessions.md)
 
@@ -24,8 +24,9 @@
 ## Техническое ревью
 
 - **Дата:** 2026-08-26.
-- **Результат:** `changes_required` — очистка cookie при ошибке server-side
+- **Первичное ревью:** `changes_required` — очистка cookie при ошибке server-side
   logout, воспроизводимый PostgreSQL integration path и явное покрытие expiry и
   account ID context.
-- **Fix round 1:** реализован и проверен; ожидает независимой повторной проверки
-  перед сменой статуса на `technical_review: approved`.
+- **Fix round 1:** реализован в commit `76125e5` и проверен.
+- **Независимое повторное ревью:** `approved` 2026-08-26; approval gate пройден
+  после проверки fix round 1.

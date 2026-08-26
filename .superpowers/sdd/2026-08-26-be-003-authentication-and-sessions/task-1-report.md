@@ -283,7 +283,12 @@ disposable Compose resources.
 ### Technical-review metadata
 
 The task register defines the review process but has no per-row status field.
-Therefore only BE-003 task metadata was updated. It records the completed
-review outcome as `technical_review: changes_required` and fix round 1 as ready
-for independent re-review. The implementation does not self-assign
-`technical_review: approved`; the reviewer owns that transition.
+Therefore only BE-003 task metadata was updated. At fix-round handoff it
+recorded `technical_review: changes_required` and readiness for independent
+re-review without self-assigning approval; the reviewer owned that transition.
+
+### Independent re-review approval
+
+Independent re-review completed on 2026-08-26 after verification of fix commit
+`76125e5`: BE-003 passed the approval gate and task metadata is now
+`technical_review: approved`.
