@@ -68,3 +68,31 @@ func TestLoadDefaultsAPIPort(t *testing.T) {
 		t.Fatalf("APIAddress = %q, want %q", config.APIAddress, ":8080")
 	}
 }
+
+func TestLoadDefaultsRecognitionProviderEmpty(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://app:password@postgres:5432/app?sslmode=disable")
+	t.Setenv("RECOGNITION_PROVIDER", "")
+
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if config.RecognitionProvider != "" {
+		t.Fatalf("RecognitionProvider = %q, want empty by default", config.RecognitionProvider)
+	}
+}
+
+func TestLoadReadsRecognitionProvider(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://app:password@postgres:5432/app?sslmode=disable")
+	t.Setenv("RECOGNITION_PROVIDER", "mock")
+
+	config, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if config.RecognitionProvider != "mock" {
+		t.Fatalf("RecognitionProvider = %q, want %q", config.RecognitionProvider, "mock")
+	}
+}

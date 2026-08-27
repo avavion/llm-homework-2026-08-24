@@ -10,7 +10,7 @@ func TestHealthzReturnsOK(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	response := httptest.NewRecorder()
 
-	NewServer(nil, nil).ServeHTTP(response, request)
+	NewServer(nil, nil, "").ServeHTTP(response, request)
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", response.Code, http.StatusOK)
@@ -27,7 +27,7 @@ func TestAllowedFrontendOriginGetsCORSHeaders(t *testing.T) {
 	request.Header.Set("Access-Control-Request-Method", "POST")
 	response := httptest.NewRecorder()
 
-	NewServer(nil, []string{"http://localhost:5173"}).ServeHTTP(response, request)
+	NewServer(nil, []string{"http://localhost:5173"}, "").ServeHTTP(response, request)
 
 	if response.Code != http.StatusNoContent {
 		t.Fatalf("status code = %d, want %d", response.Code, http.StatusNoContent)
@@ -45,7 +45,7 @@ func TestUnlistedOriginGetsNoCORSHeaders(t *testing.T) {
 	request.Header.Set("Origin", "https://not-allowed.example.com")
 	response := httptest.NewRecorder()
 
-	NewServer(nil, []string{"http://localhost:5173"}).ServeHTTP(response, request)
+	NewServer(nil, []string{"http://localhost:5173"}, "").ServeHTTP(response, request)
 
 	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Fatalf("Access-Control-Allow-Origin = %q, want empty for an unlisted origin", got)

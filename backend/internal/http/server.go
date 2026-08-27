@@ -15,7 +15,7 @@ import (
 	"llm-homework/backend/internal/regulation"
 )
 
-func NewServer(db *sql.DB, allowedOrigins []string) http.Handler {
+func NewServer(db *sql.DB, allowedOrigins []string, recognitionProvider string) http.Handler {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(cors(allowedOrigins))
@@ -43,10 +43,11 @@ func NewServer(db *sql.DB, allowedOrigins []string) http.Handler {
 	recipeService := recipe.NewService(regulation.NewRepository())
 	recipe.RegisterRoutes(authenticated, recipeService, productService, resolveAccount)
 
+	ocrClient, llmClient := recognition.Clients(recognitionProvider)
 	recognitionService := recognition.NewService(
 		recognition.NewRepository(db),
-		recognition.UnconfiguredOCRClient{},
-		recognition.UnconfiguredLLMClient{},
+		ocrClient,
+		llmClient,
 	)
 	recognition.RegisterRoutes(authenticated, recognitionService, resolveAccount)
 

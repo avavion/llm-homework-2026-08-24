@@ -14,9 +14,10 @@ const defaultAPIPort = "8080"
 var defaultFrontendOrigins = []string{"http://localhost:5173", "http://localhost:3000"}
 
 type Config struct {
-	DatabaseURL     string
-	APIAddress      string
-	FrontendOrigins []string
+	DatabaseURL         string
+	APIAddress          string
+	FrontendOrigins     []string
+	RecognitionProvider string
 }
 
 func Load() (Config, error) {
@@ -31,9 +32,10 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		DatabaseURL:     databaseURL,
-		APIAddress:      ":" + port,
-		FrontendOrigins: frontendOrigins(),
+		DatabaseURL:         databaseURL,
+		APIAddress:          ":" + port,
+		FrontendOrigins:     frontendOrigins(),
+		RecognitionProvider: os.Getenv("RECOGNITION_PROVIDER"),
 	}, nil
 }
 
