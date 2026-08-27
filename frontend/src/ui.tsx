@@ -1,4 +1,4 @@
-import {forwardRef, type ReactNode, useEffect, useRef} from 'react'
+import {forwardRef, type ReactNode, useEffect, useRef, useState} from 'react'
 import {Link, NavLink} from 'react-router-dom'
 import {t} from './i18n'
 
@@ -100,16 +100,29 @@ export function ToastRegion({toasts, onDismiss}: { toasts: Toast[]; onDismiss: (
     )
 }
 
-export function AppShell({children, addOpen, onOpenAdd, onCloseAdd}: {
+function useIsMobile() {
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 640 : false)
+    useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth < 640)
+        window.addEventListener('resize', onResize)
+        return () => window.removeEventListener('resize', onResize)
+    }, [])
+    return isMobile
+}
+
+export function AppShell({children, railFooter, addOpen, onOpenAdd, onCloseAdd}: {
     children: ReactNode;
+    railFooter?: ReactNode;
     addOpen: boolean;
     onOpenAdd: () => void;
     onCloseAdd: () => void
 }) {
+    const isMobile = useIsMobile()
     const trigger = useRef<HTMLButtonElement>(null)
     useEffect(() => {
         if (!addOpen) trigger.current?.focus()
     }, [addOpen])
+    const addIcon = <Icon><path d="M12 5v14M5 12h14"/></Icon>
     return (
         <>
             <a className="skip" href="#main-content">Skip to content</a>
@@ -123,20 +136,23 @@ export function AppShell({children, addOpen, onOpenAdd, onCloseAdd}: {
                         <NavLink to="/recipes"><Icon>
                             <path d="M7 3v7a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4V3M9 3v5m6-5v5M12 14v7"/>
                         </Icon><span>{t.recipes}</span></NavLink>
-                        <IconButton ref={trigger} label={t.add} className="nav-add" expanded={addOpen}
-                                    onClick={onOpenAdd}>
-                            <Icon>
-                                <path d="M12 5v14M5 12h14"/>
-                            </Icon>
-                            <span>{t.add}</span>
-                        </IconButton>
+                        {isMobile && <IconButton ref={trigger} label={t.add} className="nav-fab" expanded={addOpen} onClick={onOpenAdd}>{addIcon}</IconButton>}
                         <NavLink to="/settings"><Icon>
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
                         </Icon><span>{t.settings}</span></NavLink>
                     </nav>
+                    {!isMobile && railFooter && <div className="rail-footer">{railFooter}</div>}
                 </div>
-                <main id="main-content" className="page">{children}</main>
+                <main id="main-content" className="page">
+                    {isMobile && railFooter && <div className="mobile-account">{railFooter}</div>}
+                    {!isMobile && (
+                        <div className="workspace-toolbar">
+                            <IconButton ref={trigger} label={t.add} className="add" expanded={addOpen} onClick={onOpenAdd}>{addIcon}<span>{t.add}</span></IconButton>
+                        </div>
+                    )}
+                    {children}
+                </main>
             </div>
             <AddProductSheet open={addOpen} onClose={onCloseAdd}/>
         </>
