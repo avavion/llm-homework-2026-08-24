@@ -1,7 +1,7 @@
 # FE-004 — Ручное добавление продукта
 
 - **Исполнитель:** Senior Frontend Developer
-- **Статус:** ready после зависимостей
+- **Статус:** in progress (fake POST до BE-004)
 - **Зависимости:** FE-001, FE-002, BE-004
 - **Timebox:** 3 рабочих дня
 - **Technical review:** approved, круг 1/2; [запись](../reviews/2026-08-26-frontend-technical-review.md)
