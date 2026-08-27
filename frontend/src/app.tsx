@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { api, ApiError, apiMode } from './api'
 import { Alert, AppShell, EmptyState, Skeleton, StatusBadge, type Status } from './ui'
-import { t } from './i18n'
+import { locale, t } from './i18n'
 import type { Product, ProductInput } from './mock-api'
 
 const productKeys = { list: ['products'] as const, detail: (id: string) => ['products', id] as const }
@@ -18,9 +18,10 @@ const dateTypeLabel = (type: Product['dateType']) => type === 'use_by' ? 'Год
 function ProtectedLayout() {
   const location = useLocation()
   const session = useQuery({ queryKey: ['session'], queryFn: api.auth.session, retry: false, staleTime: 60_000 })
+  const [addOpen, setAddOpen] = useState(false)
   if (session.isPending) return <PublicPage title={t.loading}><Skeleton /></PublicPage>
   if (session.isError) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  return <AppShell><div className="private-content"><div className="account-actions"><LogoutButton /></div><Outlet /></div></AppShell>
+  return <AppShell addOpen={addOpen} onOpenAdd={() => setAddOpen(true)} onCloseAdd={() => setAddOpen(false)}><div className="private-content"><div className="account-actions"><LogoutButton /></div><Outlet /></div></AppShell>
 }
 
 function LogoutButton() {
@@ -60,7 +61,8 @@ function DraftReview() { const { id = '' } = useParams(); const navigate = useNa
 function ProductDetail() { const { id = '' } = useParams(); const queryClient = useQueryClient(); const product = useQuery({ queryKey: productKeys.detail(id), queryFn: () => api.products.get(id), retry: false }); const complete = useMutation({ mutationFn: (action: 'used' | 'discarded') => api.products.complete(id, action), onSuccess: () => { queryClient.invalidateQueries({ queryKey: productKeys.list }); product.refetch() } }); if (product.isPending) return <Page title="Продукт"><Skeleton /></Page>; if (product.isError) return <Page title="Не удалось открыть продукт"><RequestError retry={() => product.refetch()} /></Page>; const item = product.data; return <Page title={item.name}><section className="card stack"><StatusBadge status={item.status} /><p>{dateTypeLabel(item.dateType)}: <time dateTime={item.expiryDate}>{item.expiryDate}</time></p><p>{item.location || 'Место хранения не указано'}</p>{!['used', 'discarded'].includes(item.status) && <div className="form-actions"><button disabled={complete.isPending} onClick={() => complete.mutate('used')}>Использован</button><button className="button-secondary" disabled={complete.isPending} onClick={() => complete.mutate('discarded')}>Выброшен</button></div>}{complete.isError && <Alert tone="danger">{message(complete.error)}</Alert>}</section></Page> }
 
 function Recipes() { const recipes = useQuery({ queryKey: ['recipes'], queryFn: api.recipes, retry: false }); return <Page title={t.recipes}>{recipes.isPending ? <Skeleton /> : recipes.isError ? <RequestError retry={() => recipes.refetch()} /> : recipes.data.length === 0 ? <EmptyState action={<Link to="/products">{t.products}</Link>}>{t.noRecipes}</EmptyState> : <ul className="product-list">{recipes.data.map((recipe) => <li className="card" key={recipe.title}><h2>{recipe.title}</h2><p>Рекомендация основана на доступных продуктах.</p></li>)}</ul>}</Page> }
-function Settings() { return <Page title={t.settings}><section className="card stack"><Alert>{t.settingsBlocked}</Alert><p>{t.profileBlocked}</p><p className="muted">В этом окружении: {apiMode === 'fixture' ? 'тестовые данные разработки' : 'подключён API-сервер'}.</p></section></Page> }
+function Settings() {
+  return <Page title={t.settings}><section className="card stack"><div><h2>{locale === 'ru' ? 'Настройки приложения' : 'Application settings'}</h2><p className="muted">{locale === 'ru' ? 'Интерфейс использует единую светлую тему.' : 'The interface uses one light theme.'}</p></div><Alert>{t.settingsBlocked}</Alert><p>{t.profileBlocked}</p><p className="muted">{locale === 'ru' ? 'В этом окружении: ' : 'In this environment: '}{apiMode === 'fixture' ? (locale === 'ru' ? 'тестовые данные разработки' : 'development fixture data') : (locale === 'ru' ? 'подключён API-сервер' : 'API server connected')}.</p></section></Page> }
 
 function Credentials({ register }: { register?: boolean }) { const navigate = useNavigate(); const location = useLocation(); const queryClient = useQueryClient(); const [error, setError] = useState<string>(); const form = useForm<{ email: string; password: string }>({ defaultValues: { email: '', password: '' } }); const action = useMutation({ mutationFn: ({ email, password }: { email: string; password: string }) => register ? api.auth.register(email, password) : api.auth.login(email, password), onSuccess: async () => { if (register) { navigate('/login'); return } await queryClient.invalidateQueries({ queryKey: ['session'] }); navigate((location.state as { from?: string } | null)?.from ?? '/products') }, onError: (failure) => setError(message(failure)) }); return <PublicPage title={register ? t.register : t.login}>{register && <Alert tone="warning">{t.profileBlocked}</Alert>}<form className="form-card" onSubmit={form.handleSubmit((values) => { setError(undefined); action.mutate(values) })} noValidate><label>E-mail<input type="email" autoComplete="email" {...form.register('email', { required: 'Введите e-mail' })} /></label><label>Пароль<input type="password" autoComplete={register ? 'new-password' : 'current-password'} {...form.register('password', { required: 'Введите пароль', minLength: { value: 8, message: 'Минимум 8 символов' } })} /></label>{error && <Alert tone="danger">{error}</Alert>}<button disabled={action.isPending} type="submit">{action.isPending ? 'Отправляем…' : register ? t.register : t.login}</button><Link to={register ? '/login' : '/register'}>{register ? t.login : t.register}</Link></form></PublicPage> }
 

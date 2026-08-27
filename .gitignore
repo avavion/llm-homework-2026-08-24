@@ -1,3 +1,5 @@
 .idea
 .worktrees/
 node_modules/
+.agents
+.superpowers

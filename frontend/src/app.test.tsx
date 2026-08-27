@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { expect, test } from 'vitest'
@@ -36,4 +36,18 @@ test('keeps a photo product as a draft until explicit approve', async () => {
 test('renders required non-product routes instead of a 404', async () => {
   await renderApp('/recipes', true)
   expect(await screen.findByRole('heading', { name: /Рецепты|Recipes/ })).toBeInTheDocument()
+})
+
+test('does not offer a theme picker in settings', async () => {
+  await renderApp('/settings', true)
+  expect(await screen.findByRole('heading', { level: 1, name: /настройки|settings/i })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /тёмная|dark/i })).not.toBeInTheDocument()
+})
+
+test('opens and closes the mobile add-product sheet', async () => {
+  await renderApp('/products', true)
+  fireEvent.click(await screen.findByRole('button', { name: /добавить продукт|add product/i }))
+  expect(screen.getByRole('dialog', { name: /добавить продукт|add product/i })).toBeInTheDocument()
+  fireEvent.keyDown(document, { key: 'Escape' })
+  expect(screen.queryByRole('dialog', { name: /добавить продукт|add product/i })).not.toBeInTheDocument()
 })
