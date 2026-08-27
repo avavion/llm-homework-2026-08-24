@@ -11,16 +11,21 @@ async function renderApp(path: string, authenticated = false) {
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><App /></MemoryRouter></QueryClientProvider>)
 }
 
-test('protects the inventory route without a session', async () => {
+test('protects the home route without a session', async () => {
   await api.auth.logout()
-  await renderApp('/products')
+  await renderApp('/')
   expect(await screen.findByRole('heading', { name: /Войти|Sign in/ })).toBeInTheDocument()
 })
 
-test('renders navigation and inventory for an authenticated session', async () => {
-  await renderApp('/products', true)
+test('renders navigation and inventory on the home route for an authenticated session', async () => {
+  await renderApp('/', true)
   expect(await screen.findByRole('navigation', { name: /основная навигация|primary navigation/i })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: /мои продукты|my products/i })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: /использовать первым|use first/i })).toBeInTheDocument()
+})
+
+test('redirects the legacy /products path to the home route', async () => {
+  await renderApp('/products', true)
   expect(await screen.findByRole('heading', { name: /использовать первым|use first/i })).toBeInTheDocument()
 })
 
@@ -45,7 +50,7 @@ test('does not offer a theme picker in settings', async () => {
 })
 
 test('opens and closes the mobile add-product sheet', async () => {
-  await renderApp('/products', true)
+  await renderApp('/', true)
   fireEvent.click(await screen.findByRole('button', { name: /добавить продукт|add product/i }))
   expect(screen.getByRole('dialog', { name: /добавить продукт|add product/i })).toBeInTheDocument()
   fireEvent.keyDown(document, { key: 'Escape' })
