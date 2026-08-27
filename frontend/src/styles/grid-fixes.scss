@@ -1,0 +1,65 @@
+/* Final layout layer: explicit tracks prevent breakpoint drift. */
+@media (min-width: 768px) {
+  .page {
+    padding-inline: 32px;
+  }
+  .inventory-layout {
+    gap: 28px;
+  }
+  .product-card {
+    grid-template-columns: minmax(220px, 1fr) 132px max-content;
+    column-gap: 20px;
+  }
+  .product-card__actions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-content: flex-start;
+    padding-left: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .nav,
+  .page {
+    max-width: 1200px;
+  }
+  .page {
+    padding-inline: 36px;
+  }
+  .inventory-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    gap: 40px;
+  }
+  .inventory-main {
+    min-width: 0;
+  }
+  .page-header {
+    min-height: 96px;
+  }
+  .filters {
+    grid-template-columns: minmax(0, 1fr) 200px;
+  }
+  .product-card {
+    grid-template-columns: minmax(220px, 1fr) 140px max-content;
+    min-height: 88px;
+    padding: 14px 4px;
+  }
+  .product-card__actions {
+    grid-column: auto;
+    grid-row: auto;
+    padding-left: 0;
+    gap: 6px;
+  }
+  .product-card__actions button {
+    min-width: 108px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .page {
+    padding-inline: 20px;
+  }
+  .inventory-layout {
+    grid-template-columns: minmax(0, 760px) 340px;
+  }
+}
