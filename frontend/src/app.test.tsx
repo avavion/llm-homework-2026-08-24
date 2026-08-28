@@ -81,3 +81,14 @@ test('opens and closes the mobile add-product sheet', async () => {
   fireEvent.keyDown(document, { key: 'Escape' })
   expect(screen.queryByRole('dialog', { name: /добавить продукт|add product/i })).not.toBeInTheDocument()
 })
+
+test('keeps keyboard focus inside the lifecycle dialog', async () => {
+  await renderApp('/', true)
+  const triggers = await screen.findAllByRole('button', { name: /использован|used/i })
+  fireEvent.click(triggers[0])
+  const dialog = screen.getByRole('dialog')
+  const buttons = screen.getAllByRole('button', { hidden: false }).filter((button) => dialog.contains(button))
+  buttons.at(-1)?.focus()
+  fireEvent.keyDown(document, { key: 'Tab' })
+  expect(buttons[0]).toHaveFocus()
+})

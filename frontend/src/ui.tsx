@@ -47,6 +47,16 @@ IconButton.displayName = 'IconButton'
 
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+export function trapDialogTabKey(event: KeyboardEvent, root: HTMLElement | null) {
+    if (event.key !== 'Tab') return
+    const focusable = Array.from(root?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])
+    if (focusable.length === 0) { event.preventDefault(); return }
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+}
+
 export function AddProductSheet({ open, onClose, returnFocusRef }: { open: boolean; onClose: () => void; returnFocusRef: RefObject<HTMLButtonElement | null> }) {
     const dialogRef = useRef<HTMLElement>(null)
     const closeRef = useRef<HTMLButtonElement>(null)
@@ -56,13 +66,7 @@ export function AddProductSheet({ open, onClose, returnFocusRef }: { open: boole
         closeRef.current?.focus()
         const close = (event: KeyboardEvent) => {
             if (event.key === 'Escape') onClose()
-            if (event.key !== 'Tab') return
-            const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])
-            if (focusable.length === 0) { event.preventDefault(); return }
-            const first = focusable[0]
-            const last = focusable[focusable.length - 1]
-            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
-            if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+            trapDialogTabKey(event, dialogRef.current)
         }
         document.addEventListener('keydown', close)
         return () => { document.removeEventListener('keydown', close); returnFocusRef.current?.focus() }

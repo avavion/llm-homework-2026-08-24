@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Package } from 'lucide-react'
 import { api, ApiError, apiMode, type NotificationSetting, type Profile } from './api'
-import { Alert, AppShell, EmptyState, Skeleton, StatusBadge, statusLabel, type Status } from './ui'
+import { Alert, AppShell, EmptyState, Skeleton, StatusBadge, statusLabel, trapDialogTabKey, type Status } from './ui'
 import { locale, t } from './i18n'
 import type { Product, ProductInput } from './mock-api'
 
@@ -43,7 +43,7 @@ function RequestError({ retry }: { retry: () => void }) { return <Alert tone="da
 
 function LifecycleDialog({ product, action, onClose, onConfirm, pending, error }: { product: Product; action: 'used' | 'discarded'; onClose: () => void; onConfirm: () => void; pending: boolean; error: unknown }) {
   const dialogRef = useRef<HTMLElement>(null); const confirmRef = useRef<HTMLButtonElement>(null); const titleId = useId()
-  useEffect(() => { confirmRef.current?.focus(); const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !pending) onClose() }; document.addEventListener('keydown', onKeyDown); return () => document.removeEventListener('keydown', onKeyDown) }, [onClose, pending])
+  useEffect(() => { confirmRef.current?.focus(); const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !pending) onClose(); trapDialogTabKey(event, dialogRef.current) }; document.addEventListener('keydown', onKeyDown); return () => document.removeEventListener('keydown', onKeyDown) }, [onClose, pending])
   const isUsed = action === 'used'
   return <div className="dialog-backdrop" onMouseDown={() => !pending && onClose()}><section ref={dialogRef} className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={(event) => event.stopPropagation()}><h2 id={titleId}>{isUsed ? t.confirmUsedTitle : t.confirmDiscardedTitle}</h2><p>{isUsed ? t.confirmUsedText : t.confirmDiscardedText}</p><p className="muted">{product.name}</p>{error ? <Alert tone="danger">{message(error)}</Alert> : null}<div className="form-actions"><button ref={confirmRef} type="button" disabled={pending} onClick={onConfirm}>{pending ? t.updating : t.update}</button><button className="button-secondary" type="button" disabled={pending} onClick={onClose}>{t.cancel}</button></div></section></div>
 }
