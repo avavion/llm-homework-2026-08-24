@@ -17,6 +17,25 @@ test('protects the home route without a session', async () => {
   expect(await screen.findByRole('heading', { name: /Войти|Sign in/ })).toBeInTheDocument()
 })
 
+test('renders the sign-in screen as an accessible auth layout', async () => {
+  await api.auth.logout()
+  await renderApp('/login')
+  expect(await screen.findByTestId('auth-story')).toBeInTheDocument()
+  expect(screen.getByRole('main')).toHaveClass('auth-layout')
+  expect(screen.getByLabelText(/пароль|password/i)).toHaveAttribute('autocomplete', 'current-password')
+})
+
+test('links both auth validation errors to their fields', async () => {
+  await api.auth.logout()
+  await renderApp('/register')
+  fireEvent.click(screen.getByRole('button', { name: /создать аккаунт|create account/i }))
+  const summary = await screen.findByRole('alert', { name: /исправьте ошибки|fix the errors/i })
+  expect(summary).toHaveFocus()
+  expect(summary).toContainElement(screen.getByRole('link', { name: /корректный e-mail|valid email/i }))
+  expect(screen.getByRole('link', { name: /минимум 8 символов|at least 8 characters/i })).toHaveAttribute('href', '#password')
+  expect(screen.getByLabelText(/пароль|password/i)).toHaveAttribute('autocomplete', 'new-password')
+})
+
 test('renders navigation and inventory on the home route for an authenticated session', async () => {
   await renderApp('/', true)
   expect(await screen.findByRole('navigation', { name: /основная навигация|primary navigation/i })).toBeInTheDocument()
