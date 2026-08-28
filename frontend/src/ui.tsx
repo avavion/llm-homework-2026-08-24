@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode, useEffect, useRef, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ChefHat, ChevronRight, FileText, Package, Camera, Plus, Settings as SettingsIcon, X } from 'lucide-react'
 import { t } from './i18n'
 
@@ -122,6 +122,8 @@ export function AppShell({ children, railFooter, addOpen, onOpenAdd, onCloseAdd 
 }) {
     const isMobile = useIsMobile()
     const trigger = useRef<HTMLButtonElement>(null)
+    const location = useLocation()
+    const crumb = location.pathname === '/recipes' ? t.recipes : location.pathname === '/settings' ? t.settings : t.products
     useEffect(() => {
         if (!addOpen) trigger.current?.focus()
     }, [addOpen])
@@ -143,6 +145,7 @@ export function AppShell({ children, railFooter, addOpen, onOpenAdd, onCloseAdd 
                     {isMobile && railFooter && <div className="mobile-account">{railFooter}</div>}
                     {!isMobile && (
                         <div className="workspace-toolbar">
+                            <span className="crumb">{crumb}</span>
                             <IconButton ref={trigger} label={t.add} className="add" expanded={addOpen} onClick={onOpenAdd}><Plus aria-hidden="true" size={18} /><span>{t.add}</span></IconButton>
                         </div>
                     )}

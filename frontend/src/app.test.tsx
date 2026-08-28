@@ -29,6 +29,12 @@ test('redirects the legacy /products path to the home route', async () => {
   expect(await screen.findByRole('heading', { name: /использовать первым|use first/i })).toBeInTheDocument()
 })
 
+test('links from the priority ribbon to the full inventory table', async () => {
+  await renderApp('/', true)
+  const link = await screen.findByRole('link', { name: /все продукты|all products/i })
+  expect(link).toHaveAttribute('href', '#inventory-table')
+})
+
 test('keeps a photo product as a draft until explicit approve', async () => {
   await api.auth.login('test@example.com', 'password123')
   const before = await api.products.list()

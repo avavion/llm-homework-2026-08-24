@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Package } from 'lucide-react'
 import { api, ApiError, apiMode } from './api'
 import { Alert, AppShell, EmptyState, Skeleton, StatusBadge, statusLabel, type Status } from './ui'
 import { locale, t } from './i18n'
@@ -39,9 +40,12 @@ function ProductList() {
   const shown = useMemo(() => (products.data ?? []).filter((item) => (status === 'all' || item.status === status) && item.name.toLowerCase().includes(query.toLowerCase())).sort((a, b) => a.expiryDate.localeCompare(b.expiryDate)), [products.data, query, status])
   const urgent = useMemo(() => (products.data ?? []).filter((item) => !['used', 'discarded'].includes(item.status)).sort((a, b) => a.expiryDate.localeCompare(b.expiryDate)).slice(0, 3), [products.data])
   const [heroLine1, heroLine2] = t.heroTitle.split('\n')
+  const todayLabel = useMemo(() => {
+    try { return new Date().toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' }) } catch { return t.todayKicker }
+  }, [])
   const statusFilters: { value: Status | 'all'; label: string }[] = [{ value: 'all', label: t.filterAll }, { value: 'active', label: statusLabel('active') }, { value: 'attention', label: statusLabel('attention') }, { value: 'expired', label: statusLabel('expired') }]
-  return <div className="page-stack pantry-home">
-    <section className="hero"><span className="kicker">{t.todayKicker}</span><h1>{heroLine1}<br />{heroLine2}</h1><p className="hero-sub">{t.heroSubtitle}</p></section>
+  return <div className="dashboard">
+    <section className="hero hero--dashboard"><div className="hero-title"><span className="kicker">{todayLabel}</span><h1>{heroLine1}<br />{heroLine2}</h1></div><p className="hero-sub">{t.heroSubtitle}</p></section>
     {products.isPending ? (
       <section className="priority" aria-labelledby="priority-title">
         <div className="priority-intro"><span className="priority-eyebrow">{t.priorityEyebrow}</span><h2 id="priority-title">{t.urgency}</h2></div>
@@ -49,7 +53,7 @@ function ProductList() {
       </section>
     ) : (products.data ?? []).length > 0 && (
       <section className="priority" aria-labelledby="priority-title">
-        <div className="priority-intro"><span className="priority-eyebrow">{t.priorityEyebrow}</span><h2 id="priority-title">{t.urgency}</h2><span className="priority-count">{urgent.length}</span></div>
+        <div className="priority-intro"><span className="priority-eyebrow">{t.priorityEyebrow}</span><h2 id="priority-title">{t.urgency}</h2><span className="priority-count">{urgent.length}</span>{urgent.length > 0 && <a className="priority-link" href="#inventory-table">{t.allProducts} →</a>}</div>
         {urgent.length === 0 ? <p className="priority-empty">{t.allCaughtUp}</p> : urgent.map((item, index) => <article className="priority-card" key={item.id}><span className="card-num">{String(index + 1).padStart(2, '0')}</span><h3>{item.name}</h3><p>{item.location || '—'} · <time dateTime={item.expiryDate}>{item.expiryDate}</time></p><StatusBadge status={item.status} /></article>)}
       </section>
     )}
@@ -60,10 +64,10 @@ function ProductList() {
     </section>
     <label className="search-field">{t.search}<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t.search} /></label>
     {products.isPending ? <section className="table" aria-busy="true"><Skeleton /><Skeleton /><Skeleton /></section> : products.isError ? <RequestError retry={() => products.refetch()} /> : shown.length === 0 ? <EmptyState action={<Link className="button-link" to="/products/new">{t.add}</Link>}>{t.empty}</EmptyState> : (
-      <div className="table" role="table" aria-label={t.products}>
+      <div className="table" id="inventory-table" role="table" aria-label={t.products}>
         <div className="head" role="row"><span role="columnheader">{t.tableProduct}</span><span role="columnheader">{t.tableStorage}</span><span role="columnheader">{t.tableDate}</span><span role="columnheader">{t.tableStatus}</span><span role="columnheader" aria-hidden="true" /></div>
         {shown.map((item) => <div className="tr" role="row" key={item.id}>
-          <span role="cell" className="name"><Link to={`/products/${item.id}`}>{item.name}</Link><span className="row-meta">{item.location || '—'} · {item.expiryDate}</span></span>
+          <span role="cell" className="name"><span className="row-icon" aria-hidden="true"><Package size={16} /></span><span className="name-copy"><Link to={`/products/${item.id}`}>{item.name}</Link><span className="row-meta">{item.location || '—'} · {item.expiryDate}</span></span></span>
           <span role="cell" className="cell">{item.location || '—'}</span>
           <span role="cell" className="cell"><time dateTime={item.expiryDate}>{item.expiryDate}</time><br />{dateTypeLabel(item.dateType)}</span>
           <span role="cell"><StatusBadge status={item.status} /></span>
