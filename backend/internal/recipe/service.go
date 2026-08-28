@@ -17,9 +17,20 @@ type RuleLookup interface {
 	RuleFor(countryCode string, dateType product.DateType) (regulation.Rule, bool)
 }
 
+// Kind identifies which client-side copy template a Recipe pairs with, so the
+// frontend can render a localized title instead of a hardcoded English one.
+type Kind string
+
+const (
+	KindUseUp        Kind = "use_up"
+	KindCombineGroup Kind = "combine_group"
+)
+
 type Recipe struct {
-	Title      string
-	ProductIDs []uuid.UUID
+	Kind        Kind
+	ProductName string
+	GroupName   string
+	ProductIDs  []uuid.UUID
 }
 
 type Service struct {
@@ -79,7 +90,7 @@ func (service *Service) Suggest(items []product.Product) []Recipe {
 	var groupOrder []string
 
 	for _, item := range eligible {
-		recipes = append(recipes, Recipe{Title: "Use up " + item.Name, ProductIDs: []uuid.UUID{item.ID}})
+		recipes = append(recipes, Recipe{Kind: KindUseUp, ProductName: item.Name, ProductIDs: []uuid.UUID{item.ID}})
 
 		groupName := "other"
 		if item.ProductGroup != nil && *item.ProductGroup != "" {
@@ -96,7 +107,7 @@ func (service *Service) Suggest(items []product.Product) []Recipe {
 		if len(ids) < 2 {
 			continue
 		}
-		recipes = append(recipes, Recipe{Title: "Combine your " + groupName + " items", ProductIDs: ids})
+		recipes = append(recipes, Recipe{Kind: KindCombineGroup, GroupName: groupName, ProductIDs: ids})
 	}
 
 	return recipes

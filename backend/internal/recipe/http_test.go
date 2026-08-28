@@ -42,7 +42,7 @@ func TestRecipesEndpointReturnsSuggestionsForCaller(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(body) != 1 || body[0].Title != "Use up Milk" {
+	if len(body) != 1 || body[0].Kind != KindUseUp || body[0].ProductName != "Milk" {
 		t.Fatalf("body = %+v", body)
 	}
 }

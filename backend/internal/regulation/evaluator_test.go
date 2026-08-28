@@ -71,7 +71,7 @@ func TestResearchRequiredRuleIsNotAutomated(t *testing.T) {
 	}
 }
 
-func TestRealRegistryHasNoEnabledRowsYet(t *testing.T) {
+func TestEURegistryHasNoEnabledRowsYet(t *testing.T) {
 	repository := NewRepository()
 	rule, ok := repository.RuleFor("DE", product.DateTypeUseBy)
 	if !ok {

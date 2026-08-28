@@ -19,8 +19,10 @@ type ProductLister interface {
 type AccountResolver func(c *gin.Context) (uuid.UUID, bool)
 
 type recipeResponse struct {
-	Title      string      `json:"title"`
-	ProductIDs []uuid.UUID `json:"product_ids"`
+	Kind        Kind        `json:"kind"`
+	ProductName string      `json:"product_name,omitempty"`
+	GroupName   string      `json:"group_name,omitempty"`
+	ProductIDs  []uuid.UUID `json:"product_ids"`
 }
 
 func RegisterRoutes(router gin.IRouter, service *Service, products ProductLister, resolveAccount AccountResolver) {
@@ -39,7 +41,7 @@ func RegisterRoutes(router gin.IRouter, service *Service, products ProductLister
 		suggestions := service.Suggest(items)
 		results := make([]recipeResponse, 0, len(suggestions))
 		for _, suggestion := range suggestions {
-			results = append(results, recipeResponse{Title: suggestion.Title, ProductIDs: suggestion.ProductIDs})
+			results = append(results, recipeResponse{Kind: suggestion.Kind, ProductName: suggestion.ProductName, GroupName: suggestion.GroupName, ProductIDs: suggestion.ProductIDs})
 		}
 		c.JSON(http.StatusOK, results)
 	})

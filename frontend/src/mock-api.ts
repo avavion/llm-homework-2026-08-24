@@ -51,5 +51,5 @@ export const fixtureApi = {
     approve: async (draftId: string, input: ProductInput) => { const draft = drafts.get(draftId); if (!draft || draft.status !== 'pending') throw new Error(t.draftUnavailable); const product = await fixtureApi.products.create(input); draft.status = 'approved'; return product },
     reject: async (draftId: string) => { const draft = drafts.get(draftId); if (!draft || draft.status !== 'pending') throw new Error(t.draftUnavailable); draft.status = 'rejected' },
   },
-  recipes: { list: async () => products.filter((item) => item.status !== 'expired').slice(0, 2).map((item) => ({ title: `${t.recipeTitlePrefix} ${item.name}`, product_ids: [item.id] })) },
+  recipes: { list: async (): Promise<{ kind: 'use_up' | 'combine_group'; product_name?: string; group_name?: string; product_ids: string[] }[]> => products.filter((item) => item.status !== 'expired').slice(0, 2).map((item) => ({ kind: 'use_up', product_name: item.name, product_ids: [item.id] })) },
 }

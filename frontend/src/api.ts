@@ -37,6 +37,7 @@ export type ApiProduct = {
 type Account = { id: string; email: string }
 export type Profile = { country_code: string; language: 'ru' | 'en'; regulator_group?: string }
 export type NotificationSetting = { product_group: string; alert_threshold_minutes: number }
+export type RecipeSuggestion = { kind: 'use_up' | 'combine_group'; product_name?: string; group_name?: string; product_ids: string[] }
 type ApiDraftFields = {
   Name?: string | null
   DateType?: Product['dateType'] | null
@@ -107,5 +108,5 @@ export const api = {
     approve: (id: string, input: ProductInput) => apiMode === 'fixture' ? fixtureApi.drafts.approve(id, input) : request<ApiProduct>(`/v1/product-drafts/${id}/approve`, { method: 'POST', body: JSON.stringify(toBackendProductPayload(input)) }).then(fromApiProduct),
     reject: (id: string) => apiMode === 'fixture' ? fixtureApi.drafts.reject(id) : request<void>(`/v1/product-drafts/${id}/reject`, { method: 'POST' }),
   },
-  recipes: () => apiMode === 'fixture' ? fixtureApi.recipes.list() : request<{ title: string; product_ids: string[] }[]>('/v1/recipes'),
+  recipes: () => apiMode === 'fixture' ? fixtureApi.recipes.list() : request<RecipeSuggestion[]>('/v1/recipes'),
 }

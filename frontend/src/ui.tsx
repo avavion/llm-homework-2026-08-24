@@ -1,7 +1,7 @@
-import { forwardRef, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react'
+import { forwardRef, type ReactNode, type RefObject, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { AlertCircle, AlertTriangle, ChefHat, ChevronRight, FileText, Info, Package, Camera, Plus, Settings as SettingsIcon, X } from 'lucide-react'
-import { statusLabel as localizedStatusLabel, t } from './i18n'
+import { AlertCircle, AlertTriangle, Calendar as CalendarIcon, ChefHat, ChevronLeft, ChevronRight, FileText, Info, Package, Camera, Plus, Settings as SettingsIcon, X } from 'lucide-react'
+import { locale, statusLabel as localizedStatusLabel, t } from './i18n'
 
 export type Status = 'active' | 'attention' | 'expired' | 'used' | 'discarded' | 'research_required'
 const badgeTone: Record<Status, 'active' | 'attention' | 'expired' | 'neutral' | 'info'> = {
@@ -43,6 +43,94 @@ export function WaveDivider({ to = '--canvas' }: { to?: string }) {
             <path d="M0,24 C120,50 240,-4 360,24 C480,52 600,-4 720,24 C840,52 960,-4 1080,24 C1200,52 1320,-4 1440,24 L1440,60 L0,60 Z" fill={`var(${to})`} />
             <path d="M0,24 C120,50 240,-4 360,24 C480,52 600,-4 720,24 C840,52 960,-4 1080,24 C1200,52 1320,-4 1440,24" fill="none" stroke="var(--brand-strong)" strokeOpacity="0.55" strokeWidth="2.5" strokeDasharray="8 7" strokeLinecap="round" />
         </svg>
+    )
+}
+
+const localeTag = locale === 'ru' ? 'ru-RU' : 'en-US'
+const pad2 = (value: number) => String(value).padStart(2, '0')
+const toISODate = (date: Date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+const parseISODate = (value: string): Date | null => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+    if (!match) return null
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    return Number.isNaN(date.getTime()) ? null : date
+}
+const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+// Monday-first grid regardless of locale, matching the rest of the app's fixed layout choices.
+const weekdayLabels = Array.from({ length: 7 }, (_, index) => new Intl.DateTimeFormat(localeTag, { weekday: 'short' }).format(new Date(2024, 0, index + 1)))
+
+/** A self-contained popover calendar replacing the native date input, styled to match the app's editorial theme. */
+export function DatePicker({ id, label, value, onChange, invalid, describedBy }: {
+    id?: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    invalid?: boolean;
+    describedBy?: string
+}) {
+    const [open, setOpen] = useState(false)
+    const selected = useMemo(() => parseISODate(value), [value])
+    const [viewDate, setViewDate] = useState(() => selected ?? new Date())
+    const containerRef = useRef<HTMLDivElement>(null)
+    const triggerRef = useRef<HTMLButtonElement>(null)
+
+    useEffect(() => { if (selected) setViewDate(selected) }, [selected])
+
+    useEffect(() => {
+        if (!open) return
+        const onOutsideClick = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false)
+        }
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') { setOpen(false); triggerRef.current?.focus() }
+        }
+        document.addEventListener('mousedown', onOutsideClick)
+        document.addEventListener('keydown', onKeyDown)
+        return () => {
+            document.removeEventListener('mousedown', onOutsideClick)
+            document.removeEventListener('keydown', onKeyDown)
+        }
+    }, [open])
+
+    const year = viewDate.getFullYear()
+    const month = viewDate.getMonth()
+    const startOffset = (new Date(year, month, 1).getDay() + 6) % 7
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const cells: (Date | null)[] = [...Array(startOffset).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1))]
+    const today = new Date()
+
+    const pick = (date: Date) => { onChange(toISODate(date)); setOpen(false); triggerRef.current?.focus() }
+    const display = selected ? new Intl.DateTimeFormat(localeTag, { day: '2-digit', month: 'long', year: 'numeric' }).format(selected) : t.pickDate
+    // aria-label (not the wrapping <label>) pins the accessible name so it can't pick up
+    // the popover's own text/aria-label once it renders as a sibling inside that label.
+    const accessibleLabel = selected ? `${label}: ${display}` : label
+
+    return (
+        <div className="date-picker" ref={containerRef}>
+            <button ref={triggerRef} type="button" id={id} className="date-picker-trigger" aria-haspopup="dialog"
+                    aria-label={accessibleLabel} aria-expanded={open} aria-invalid={invalid} aria-describedby={describedBy}
+                    onClick={() => setOpen((current) => !current)}>
+                <CalendarIcon size={16} aria-hidden="true" />
+                <span className={selected ? undefined : 'muted'}>{display}</span>
+            </button>
+            {open && (
+                <div className="date-picker-panel" role="dialog" aria-modal="true" aria-label={t.calendar}>
+                    <div className="date-picker-head">
+                        <IconButton label={t.prevMonth} className="date-picker-nav" onClick={() => setViewDate(new Date(year, month - 1, 1))}><ChevronLeft size={16} /></IconButton>
+                        <span className="date-picker-month">{new Intl.DateTimeFormat(localeTag, { month: 'long', year: 'numeric' }).format(viewDate)}</span>
+                        <IconButton label={t.nextMonth} className="date-picker-nav" onClick={() => setViewDate(new Date(year, month + 1, 1))}><ChevronRight size={16} /></IconButton>
+                    </div>
+                    <div className="date-picker-weekdays" aria-hidden="true">{weekdayLabels.map((label, index) => <span key={index}>{label}</span>)}</div>
+                    <div className="date-picker-grid">
+                        {cells.map((date, index) => date
+                            ? <button type="button" key={date.getTime()}
+                                      className={`date-picker-day${selected && isSameDay(date, selected) ? ' is-selected' : ''}${isSameDay(date, today) ? ' is-today' : ''}`}
+                                      onClick={() => pick(date)}>{date.getDate()}</button>
+                            : <span key={`empty-${index}`} aria-hidden="true" />)}
+                    </div>
+                </div>
+            )}
+        </div>
     )
 }
 

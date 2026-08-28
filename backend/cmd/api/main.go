@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // embeds the IANA zoneinfo database: the alpine runtime image ships none, and regulation.Evaluate needs named zones like Europe/Moscow
 
 	"llm-homework/backend/internal/config"
 	httpserver "llm-homework/backend/internal/http"
