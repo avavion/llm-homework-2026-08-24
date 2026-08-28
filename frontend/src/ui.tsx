@@ -133,13 +133,19 @@ export function AppShell({ children, railFooter, addOpen, onOpenAdd, onCloseAdd 
             <div className="shell">
                 <div className="rail">
                     <Link className="brand" to="/"><span>pantry<br />ledger</span></Link>
+                    <span className="tagline">{t.sidebarTagline}</span>
                     <nav className="nav" aria-label={t.navigation}>
                         <NavLink to="/" end><Package aria-hidden="true" /><span>{t.products}</span></NavLink>
                         <NavLink to="/recipes"><ChefHat aria-hidden="true" /><span>{t.recipes}</span></NavLink>
                         {isMobile && <IconButton ref={trigger} label={t.add} className="nav-fab" expanded={addOpen} onClick={onOpenAdd}><Plus aria-hidden="true" /></IconButton>}
                         <NavLink to="/settings"><SettingsIcon aria-hidden="true" /><span>{t.settings}</span></NavLink>
                     </nav>
-                    {!isMobile && railFooter && <div className="rail-footer">{railFooter}</div>}
+                    {!isMobile && (
+                        <div className="rail-footer">
+                            <div className="help-tip"><b>{t.helpTitle}</b>{t.helpText}</div>
+                            {railFooter}
+                        </div>
+                    )}
                 </div>
                 <main id="main-content" className="page">
                     {isMobile && railFooter && <div className="mobile-account">{railFooter}</div>}
