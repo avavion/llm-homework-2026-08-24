@@ -32,6 +32,20 @@ func (status LifecycleStatus) Terminal() bool {
 	return status == LifecycleUsed || status == LifecycleDiscarded
 }
 
+// DisplayStatus is the status safe to render in a client. Unlike
+// LifecycleStatus, its non-terminal values are derived from an approved
+// regulation rule at read time and are never persisted.
+type DisplayStatus string
+
+const (
+	DisplayStatusActive           DisplayStatus = "active"
+	DisplayStatusAttention        DisplayStatus = "attention"
+	DisplayStatusExpired          DisplayStatus = "expired"
+	DisplayStatusUsed             DisplayStatus = "used"
+	DisplayStatusDiscarded        DisplayStatus = "discarded"
+	DisplayStatusResearchRequired DisplayStatus = "research_required"
+)
+
 type Product struct {
 	ID                    uuid.UUID
 	AccountID             uuid.UUID

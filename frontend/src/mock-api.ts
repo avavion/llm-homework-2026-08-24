@@ -1,6 +1,6 @@
 import type { Status } from './ui'
 
-export type Product = { id: string; name: string; location: string; group: string; dateType: 'use_by' | 'best_before'; expiryDate: string; status: Extract<Status, 'active' | 'attention' | 'expired' | 'used' | 'discarded'> }
+export type Product = { id: string; name: string; location: string; group: string; dateType: 'use_by' | 'best_before'; expiryDate: string; status: Extract<Status, 'active' | 'attention' | 'expired' | 'used' | 'discarded' | 'research_required'> }
 export type ProductInput = Pick<Product, 'name' | 'location' | 'group' | 'dateType' | 'expiryDate'>
 export type DraftFields = Partial<ProductInput>
 type Draft = { id: string; status: 'pending' | 'approved' | 'rejected'; fields: DraftFields }

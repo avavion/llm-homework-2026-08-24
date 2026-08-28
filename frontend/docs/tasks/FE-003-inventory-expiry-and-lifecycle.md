@@ -1,7 +1,7 @@
 # FE-003 — Инвентарь, статусы срока и жизненный цикл
 
 - **Исполнитель:** Senior Frontend Developer
-- **Статус:** in progress (fake API до BE-004/BE-005)
+- **Статус:** implementation complete; pending live API smoke
 - **Зависимости:** FE-001, FE-002, BE-004, BE-005
 - **Timebox:** 4 рабочих дня
 - **Technical review:** approved, круг 1/2; [запись](../reviews/2026-08-26-frontend-technical-review.md)
@@ -27,3 +27,17 @@
 ## QA
 
 Playwright: normal list, empty, loading/error, фильтры, оба terminal action, 320/768/1440. Негативно: чужая запись не отрисовывается при 404/403.
+
+## Выполнено 28.08.2026
+
+- Client adapter использует `GET /v1/products`, `GET /v1/products/:id` и
+  server-owned `display_status`; если старый сервер ещё не публикует поле,
+  применяется безопасный fallback к lifecycle `status`.
+- Локальные фильтры и бейджи принимают `research_required` без вычисления
+  регуляторной семантики в браузере.
+- Проверки Frontend: TypeScript lint, 11 Vitest checks, production build и
+  8 Playwright checks прошли.
+
+**Остаточный blocker:** локальный backend не запущен, а Go toolchain отсутствует
+в текущем окружении. Нужен один smoke against deployed API и backend CI/test run
+до финальной интеграционной приёмки.

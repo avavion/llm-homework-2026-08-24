@@ -3,6 +3,7 @@ package http
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -38,9 +39,12 @@ func NewServer(db *sql.DB, allowedOrigins []string, recognitionProvider string) 
 	authenticated := router.Group("/", auth.GinRequireSession(authService))
 
 	productService := product.NewService(product.NewRepository(db))
-	product.RegisterRoutes(authenticated, productService, resolveAccount)
+	rules := regulation.NewRepository()
+	product.RegisterRoutes(authenticated, productService, resolveAccount, product.DisplayStatusFunc(func(item product.Product) product.DisplayStatus {
+		return displayStatusFor(item, rules, time.Now())
+	}))
 
-	recipeService := recipe.NewService(regulation.NewRepository())
+	recipeService := recipe.NewService(rules)
 	recipe.RegisterRoutes(authenticated, recipeService, productService, resolveAccount)
 
 	ocrClient, llmClient := recognition.Clients(recognitionProvider)
@@ -52,4 +56,43 @@ func NewServer(db *sql.DB, allowedOrigins []string, recognitionProvider string) 
 	recognition.RegisterRoutes(authenticated, recognitionService, resolveAccount)
 
 	return router
+}
+
+type regulationRuleLookup interface {
+	RuleFor(countryCode string, dateType product.DateType) (regulation.Rule, bool)
+}
+
+// displayStatusFor returns a regulation-backed display status without making
+// an unsupported food-safety or legal inference. Terminal lifecycle states
+// always win; every absent, unconfirmed, or unusable rule is research_required.
+func displayStatusFor(item product.Product, rules regulationRuleLookup, now time.Time) product.DisplayStatus {
+	switch item.LifecycleStatus {
+	case product.LifecycleUsed:
+		return product.DisplayStatusUsed
+	case product.LifecycleDiscarded:
+		return product.DisplayStatusDiscarded
+	}
+
+	if item.CountryCode == nil {
+		return product.DisplayStatusResearchRequired
+	}
+	rule, ok := rules.RuleFor(*item.CountryCode, item.DateType)
+	if !ok {
+		return product.DisplayStatusResearchRequired
+	}
+
+	status, err := regulation.Evaluate(item, rule, now)
+	if err != nil {
+		return product.DisplayStatusResearchRequired
+	}
+	switch status {
+	case regulation.StatusActive:
+		return product.DisplayStatusActive
+	case regulation.StatusAttention:
+		return product.DisplayStatusAttention
+	case regulation.StatusExpired:
+		return product.DisplayStatusExpired
+	default:
+		return product.DisplayStatusResearchRequired
+	}
 }

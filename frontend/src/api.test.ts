@@ -9,6 +9,17 @@ type DraftAdapter = {
   fromBackendDraft: (draft: { id: string; status: 'pending'; fields: { Name: string; DateType: 'best_before'; ExpiryDate: string; ProductGroup: string; StorageLocation: string } }) => unknown
 }
 
+type ProductDisplayAdapter = {
+  fromApiProduct: (item: {
+    id: string
+    name: string
+    date_type: 'use_by'
+    expiry_date: string
+    status: 'active'
+    display_status: 'research_required'
+  }) => unknown
+}
+
 test('serializes the date-only form value as the RFC 3339 timestamp required by the backend', () => {
   const adapter = apiModule as unknown as ProductPayloadAdapter
 
@@ -51,4 +62,17 @@ test('maps the backend PascalCase draft fields to the form fields', () => {
       location: 'Fridge',
     },
   })
+})
+
+test('uses the backend display status instead of the lifecycle status', () => {
+  const adapter = apiModule as unknown as ProductDisplayAdapter
+
+  expect(adapter.fromApiProduct({
+    id: 'product-1',
+    name: 'Milk',
+    date_type: 'use_by',
+    expiry_date: '2026-09-01T00:00:00Z',
+    status: 'active',
+    display_status: 'research_required',
+  })).toMatchObject({ status: 'research_required' })
 })

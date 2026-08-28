@@ -21,7 +21,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.status === 204 ? undefined as T : response.json() as Promise<T>
 }
 
-type ApiProduct = { id: string; name: string; date_type: Product['dateType']; expiry_date: string; product_group?: string; storage_location?: string; status: 'active' | 'used' | 'discarded' }
+export type ApiProduct = {
+  id: string
+  name: string
+  date_type: Product['dateType']
+  expiry_date: string
+  product_group?: string
+  storage_location?: string
+  status: 'active' | 'used' | 'discarded'
+  /** Optional while a deployed backend is being upgraded to the new contract. */
+  display_status?: Product['status']
+}
 type Account = { id: string; email: string }
 type ApiDraftFields = {
   Name?: string | null
@@ -33,7 +43,15 @@ type ApiDraftFields = {
 type ApiDraft = { id: string; status: 'pending' | 'approved' | 'rejected'; fields: ApiDraftFields }
 
 const dateOnly = (value: string) => value.slice(0, 10)
-const fromApiProduct = (item: ApiProduct): Product => ({ id: item.id, name: item.name, dateType: item.date_type, expiryDate: dateOnly(item.expiry_date), group: item.product_group ?? '', location: item.storage_location ?? '', status: item.status })
+export const fromApiProduct = (item: ApiProduct): Product => ({
+  id: item.id,
+  name: item.name,
+  dateType: item.date_type,
+  expiryDate: dateOnly(item.expiry_date),
+  group: item.product_group ?? '',
+  location: item.storage_location ?? '',
+  status: item.display_status ?? item.status,
+})
 export const fromBackendDraft = (draft: ApiDraft): { id: string; status: ApiDraft['status']; fields: DraftFields } => ({
   id: draft.id,
   status: draft.status,

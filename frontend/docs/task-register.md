@@ -8,7 +8,7 @@
 | --- | --- | --- | --- | --- | --- |
 | FE-001 | UX-система и адаптивная спецификация | Senior UI/UX Designer | — | 2 дня | approved, 26.08.2026 |
 | FE-002 | Каркас клиента: маршрутизация, сессия, i18n и a11y | Senior Frontend Developer | FE-001, BE-003 + country/profile API | 3 дня | blocked: эскалация PM, 26.08.2026 |
-| FE-003 | Инвентарь, статусы срока и жизненный цикл | Senior Frontend Developer | FE-001, FE-002, BE-004, BE-005 | 4 дня | approved, 26.08.2026 |
+| FE-003 | Инвентарь, статусы срока и жизненный цикл | Senior Frontend Developer | FE-001, FE-002, BE-004, BE-005 | 4 дня | implementation complete; awaiting live API smoke, 28.08.2026 |
 | FE-004 | Ручное добавление и редактирование продукта | Senior Frontend Developer | FE-001, FE-002, BE-004 | 3 дня | approved, 26.08.2026 |
 | FE-005 | Фото-черновик с проверкой и approve/reject | Senior Frontend Developer | FE-001, FE-002, FE-004, BE-006 | 3 дня | approved, 26.08.2026 |
 | FE-006 | Рецепты и настройки e-mail-напоминаний | Senior Frontend Developer | FE-001, FE-002, FE-003, BE-005 + согласованный HTTP-контракт | 3 дня | approved, 26.08.2026 |

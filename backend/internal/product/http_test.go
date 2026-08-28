@@ -20,6 +20,10 @@ func init() {
 // "X-Test-Account" header, so handler tests can exercise account scoping
 // without a real session cookie.
 func newTestRouter(service ServiceAPI) *gin.Engine {
+	return newTestRouterWithDisplayResolver(service, nil)
+}
+
+func newTestRouterWithDisplayResolver(service ServiceAPI, displayResolver DisplayStatusResolver) *gin.Engine {
 	router := gin.New()
 	resolveAccount := func(c *gin.Context) (uuid.UUID, bool) {
 		accountID, err := uuid.Parse(c.GetHeader("X-Test-Account"))
@@ -29,7 +33,7 @@ func newTestRouter(service ServiceAPI) *gin.Engine {
 		}
 		return accountID, true
 	}
-	RegisterRoutes(router, service, resolveAccount)
+	RegisterRoutes(router, service, resolveAccount, displayResolver)
 	return router
 }
 
@@ -85,10 +89,63 @@ func TestCreateListAndGetRoundTrip(t *testing.T) {
 	if len(listBody) != 1 {
 		t.Fatalf("list length = %d, want 1", len(listBody))
 	}
+	if listBody[0].DisplayStatus != DisplayStatusResearchRequired {
+		t.Fatalf("list display_status = %q, want %q", listBody[0].DisplayStatus, DisplayStatusResearchRequired)
+	}
 
 	get := performAs(router, accountID, http.MethodGet, "/v1/products/"+createdBody.ID.String(), nil)
 	if get.Code != http.StatusOK {
 		t.Fatalf("get status = %d, want %d", get.Code, http.StatusOK)
+	}
+	var getBody PublicProduct
+	if err := json.Unmarshal(get.Body.Bytes(), &getBody); err != nil {
+		t.Fatalf("unmarshal get: %v", err)
+	}
+	if getBody.DisplayStatus != DisplayStatusResearchRequired {
+		t.Fatalf("get display_status = %q, want %q", getBody.DisplayStatus, DisplayStatusResearchRequired)
+	}
+}
+
+func TestListAndGetUseConfiguredDisplayStatusResolver(t *testing.T) {
+	resolver := DisplayStatusFunc(func(Product) DisplayStatus { return DisplayStatusAttention })
+	router := newTestRouterWithDisplayResolver(NewService(newMemoryRepository()), resolver)
+	accountID := uuid.New()
+
+	created := performAs(router, accountID, http.MethodPost, "/v1/products", map[string]any{
+		"name": "Milk", "date_type": "best_before", "expiry_date": time.Now().Add(24 * time.Hour),
+	})
+	var createdBody PublicProduct
+	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
+		t.Fatalf("unmarshal create: %v", err)
+	}
+
+	list := performAs(router, accountID, http.MethodGet, "/v1/products", nil)
+	var listBody []PublicProduct
+	if err := json.Unmarshal(list.Body.Bytes(), &listBody); err != nil {
+		t.Fatalf("unmarshal list: %v", err)
+	}
+	if len(listBody) != 1 || listBody[0].DisplayStatus != DisplayStatusAttention {
+		t.Fatalf("list body = %+v, want attention", listBody)
+	}
+
+	get := performAs(router, accountID, http.MethodGet, "/v1/products/"+createdBody.ID.String(), nil)
+	var getBody PublicProduct
+	if err := json.Unmarshal(get.Body.Bytes(), &getBody); err != nil {
+		t.Fatalf("unmarshal get: %v", err)
+	}
+	if getBody.DisplayStatus != DisplayStatusAttention {
+		t.Fatalf("get display_status = %q, want %q", getBody.DisplayStatus, DisplayStatusAttention)
+	}
+}
+
+func TestListRequiresAuthentication(t *testing.T) {
+	router := newTestRouter(NewService(newMemoryRepository()))
+	request := httptest.NewRequest(http.MethodGet, "/v1/products", nil)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusUnauthorized)
 	}
 }
 

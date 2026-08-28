@@ -23,6 +23,19 @@ type ServiceAPI interface {
 // letting handlers stay agnostic of the session middleware implementation.
 type AccountResolver func(c *gin.Context) (uuid.UUID, bool)
 
+// DisplayStatusResolver keeps the HTTP package independent from the regulation
+// package, which already depends on product domain types.
+type DisplayStatusResolver interface {
+	ResolveDisplayStatus(Product) DisplayStatus
+}
+
+// DisplayStatusFunc adapts a function for use as a DisplayStatusResolver.
+type DisplayStatusFunc func(Product) DisplayStatus
+
+func (resolver DisplayStatusFunc) ResolveDisplayStatus(item Product) DisplayStatus {
+	return resolver(item)
+}
+
 type createRequest struct {
 	Name                  string    `json:"name"`
 	DateType              string    `json:"date_type"`
@@ -47,20 +60,25 @@ type PublicProduct struct {
 	CountryCode           *string    `json:"country_code,omitempty"`
 	AlertThresholdMinutes *int       `json:"alert_threshold_minutes,omitempty"`
 	Status                string     `json:"status"`
+	DisplayStatus         DisplayStatus `json:"display_status"`
 	CompletedAt           *time.Time `json:"completed_at,omitempty"`
 	CreatedAt             time.Time  `json:"created_at"`
 	UpdatedAt             time.Time  `json:"updated_at"`
 }
 
-func RegisterRoutes(router gin.IRouter, service ServiceAPI, resolveAccount AccountResolver) {
-	router.POST("/v1/products", createHandler(service, resolveAccount))
-	router.GET("/v1/products", listHandler(service, resolveAccount))
-	router.GET("/v1/products/:id", getHandler(service, resolveAccount))
-	router.POST("/v1/products/:id/use", completeHandler(service, resolveAccount, LifecycleUsed))
-	router.POST("/v1/products/:id/discard", completeHandler(service, resolveAccount, LifecycleDiscarded))
+func RegisterRoutes(router gin.IRouter, service ServiceAPI, resolveAccount AccountResolver, displayResolvers ...DisplayStatusResolver) {
+	displayResolver := defaultDisplayStatusResolver
+	if len(displayResolvers) > 0 && displayResolvers[0] != nil {
+		displayResolver = displayResolvers[0]
+	}
+	router.POST("/v1/products", createHandler(service, resolveAccount, displayResolver))
+	router.GET("/v1/products", listHandler(service, resolveAccount, displayResolver))
+	router.GET("/v1/products/:id", getHandler(service, resolveAccount, displayResolver))
+	router.POST("/v1/products/:id/use", completeHandler(service, resolveAccount, displayResolver, LifecycleUsed))
+	router.POST("/v1/products/:id/discard", completeHandler(service, resolveAccount, displayResolver, LifecycleDiscarded))
 }
 
-func createHandler(service ServiceAPI, resolveAccount AccountResolver) gin.HandlerFunc {
+func createHandler(service ServiceAPI, resolveAccount AccountResolver, displayResolver DisplayStatusResolver) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID, ok := resolveAccount(c)
 		if !ok {
@@ -87,11 +105,11 @@ func createHandler(service ServiceAPI, resolveAccount AccountResolver) gin.Handl
 		if writeServiceError(c, err) {
 			return
 		}
-		c.JSON(http.StatusCreated, ToPublicProduct(created))
+		c.JSON(http.StatusCreated, ToPublicProduct(created, displayResolver))
 	}
 }
 
-func listHandler(service ServiceAPI, resolveAccount AccountResolver) gin.HandlerFunc {
+func listHandler(service ServiceAPI, resolveAccount AccountResolver, displayResolver DisplayStatusResolver) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID, ok := resolveAccount(c)
 		if !ok {
@@ -105,13 +123,13 @@ func listHandler(service ServiceAPI, resolveAccount AccountResolver) gin.Handler
 
 		results := make([]PublicProduct, 0, len(items))
 		for _, item := range items {
-			results = append(results, ToPublicProduct(item))
+			results = append(results, ToPublicProduct(item, displayResolver))
 		}
 		c.JSON(http.StatusOK, results)
 	}
 }
 
-func getHandler(service ServiceAPI, resolveAccount AccountResolver) gin.HandlerFunc {
+func getHandler(service ServiceAPI, resolveAccount AccountResolver, displayResolver DisplayStatusResolver) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID, ok := resolveAccount(c)
 		if !ok {
@@ -128,11 +146,11 @@ func getHandler(service ServiceAPI, resolveAccount AccountResolver) gin.HandlerF
 		if writeServiceError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, ToPublicProduct(found))
+		c.JSON(http.StatusOK, ToPublicProduct(found, displayResolver))
 	}
 }
 
-func completeHandler(service ServiceAPI, resolveAccount AccountResolver, status LifecycleStatus) gin.HandlerFunc {
+func completeHandler(service ServiceAPI, resolveAccount AccountResolver, displayResolver DisplayStatusResolver, status LifecycleStatus) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID, ok := resolveAccount(c)
 		if !ok {
@@ -149,7 +167,7 @@ func completeHandler(service ServiceAPI, resolveAccount AccountResolver, status 
 		if writeServiceError(c, err) {
 			return
 		}
-		c.JSON(http.StatusOK, ToPublicProduct(completed))
+		c.JSON(http.StatusOK, ToPublicProduct(completed, displayResolver))
 	}
 }
 
@@ -174,7 +192,23 @@ func writeError(c *gin.Context, status int, message string) {
 	c.AbortWithStatusJSON(status, gin.H{"error": message})
 }
 
-func ToPublicProduct(item Product) PublicProduct {
+var defaultDisplayStatusResolver DisplayStatusResolver = DisplayStatusFunc(func(item Product) DisplayStatus {
+	switch item.LifecycleStatus {
+	case LifecycleUsed:
+		return DisplayStatusUsed
+	case LifecycleDiscarded:
+		return DisplayStatusDiscarded
+	default:
+		return DisplayStatusResearchRequired
+	}
+})
+
+func ToPublicProduct(item Product, displayResolvers ...DisplayStatusResolver) PublicProduct {
+	displayResolver := defaultDisplayStatusResolver
+	if len(displayResolvers) > 0 && displayResolvers[0] != nil {
+		displayResolver = displayResolvers[0]
+	}
+
 	return PublicProduct{
 		ID:                    item.ID,
 		Name:                  item.Name,
@@ -187,6 +221,7 @@ func ToPublicProduct(item Product) PublicProduct {
 		CountryCode:           item.CountryCode,
 		AlertThresholdMinutes: item.AlertThresholdMinutes,
 		Status:                string(item.LifecycleStatus),
+		DisplayStatus:         displayResolver.ResolveDisplayStatus(item),
 		CompletedAt:           item.CompletedAt,
 		CreatedAt:             item.CreatedAt,
 		UpdatedAt:             item.UpdatedAt,
