@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"llm-homework/backend/internal/account"
 )
 
@@ -35,12 +37,28 @@ type Repository interface {
 	AccountBySession(ctx context.Context, tokenHash []byte, now time.Time) (account.Account, error)
 }
 
+// ProfileInitializer gives a fresh account its default profile. The country
+// selector is not built yet (shared/docs decisions), so every new account
+// starts on the EAEU default rather than being blocked until they visit
+// Settings; ProfileInitializer alone decides what that default is.
+type ProfileInitializer interface {
+	InitializeProfile(ctx context.Context, accountID uuid.UUID) error
+}
+
 type Service struct {
 	repository Repository
+	profiles   ProfileInitializer
 }
 
 func NewService(repository Repository) *Service {
 	return &Service{repository: repository}
+}
+
+// WithProfileInitializer wires a default-profile bootstrapper into
+// registration. It returns the service to allow chaining at construction.
+func (service *Service) WithProfileInitializer(profiles ProfileInitializer) *Service {
+	service.profiles = profiles
+	return service
 }
 
 func (service *Service) Register(ctx context.Context, email, password string) (Account, error) {
@@ -57,7 +75,17 @@ func (service *Service) Register(ctx context.Context, email, password string) (A
 	if errors.Is(err, account.ErrEmailTaken) {
 		return Account{}, ErrEmailTaken
 	}
-	return result, err
+	if err != nil {
+		return Account{}, err
+	}
+
+	if service.profiles != nil {
+		if err := service.profiles.InitializeProfile(ctx, result.ID); err != nil {
+			return Account{}, err
+		}
+	}
+
+	return result, nil
 }
 
 func (service *Service) Login(ctx context.Context, email, password string) (string, Account, error) {

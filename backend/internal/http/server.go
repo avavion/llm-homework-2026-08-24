@@ -26,7 +26,10 @@ func NewServer(db *sql.DB, allowedOrigins []string, recognitionProvider string) 
 		c.Data(http.StatusOK, "application/json", []byte("{\"status\":\"ok\"}\n"))
 	})
 
-	authService := auth.NewService(account.NewRepository(db))
+	rules := regulation.NewRepository()
+	profileService := profile.NewService(profile.NewRepository(db), rules)
+
+	authService := auth.NewService(account.NewRepository(db)).WithProfileInitializer(profileService)
 	router.Any("/v1/auth/*action", gin.WrapH(auth.NewHandler(authService)))
 
 	resolveAccount := func(c *gin.Context) (uuid.UUID, bool) {
@@ -40,8 +43,7 @@ func NewServer(db *sql.DB, allowedOrigins []string, recognitionProvider string) 
 	authenticated := router.Group("/", auth.GinRequireSession(authService))
 
 	productService := product.NewService(product.NewRepository(db))
-	rules := regulation.NewRepository()
-	profile.RegisterRoutes(authenticated, profile.NewService(profile.NewRepository(db), rules), resolveAccount)
+	profile.RegisterRoutes(authenticated, profileService, resolveAccount)
 	product.RegisterRoutes(authenticated, productService, resolveAccount, product.DisplayStatusFunc(func(item product.Product) product.DisplayStatus {
 		return displayStatusFor(item, rules, time.Now())
 	}))

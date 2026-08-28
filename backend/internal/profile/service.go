@@ -13,6 +13,16 @@ import (
 
 const MinAlertThresholdMinutes = 60
 
+// DefaultCountryCode and DefaultLanguage seed every new account's profile.
+// The country selector isn't built yet, so accounts default to Russia (an
+// EAEU member) rather than being blocked until they visit Settings; the
+// EAEU regulatory rules themselves stay research_required, so this default
+// unblocks the UI without inventing an expiry rule.
+const (
+	DefaultCountryCode = "RU"
+	DefaultLanguage    = "ru"
+)
+
 var (
 	ErrInvalidProfile = errors.New("invalid profile")
 	ErrInvalidSetting = errors.New("invalid notification setting")
@@ -52,7 +62,9 @@ type RegulatorGroupLookup interface {
 
 type RegulatorGroupFunc func(countryCode string) string
 
-func (fn RegulatorGroupFunc) RegulatorGroupForCountry(countryCode string) string { return fn(countryCode) }
+func (fn RegulatorGroupFunc) RegulatorGroupForCountry(countryCode string) string {
+	return fn(countryCode)
+}
 
 type Service struct {
 	store Store
@@ -74,6 +86,13 @@ func (service *Service) SaveProfile(ctx context.Context, accountID uuid.UUID, in
 		return Profile{}, ErrInvalidProfile
 	}
 	return service.store.SaveProfile(ctx, accountID, input)
+}
+
+// InitializeProfile seeds a newly registered account with the default
+// country/language so it is never blocked on the missing country selector.
+func (service *Service) InitializeProfile(ctx context.Context, accountID uuid.UUID) error {
+	_, err := service.SaveProfile(ctx, accountID, ProfileInput{CountryCode: DefaultCountryCode, Language: DefaultLanguage})
+	return err
 }
 
 func (service *Service) RegulatorGroup(countryCode string) string {

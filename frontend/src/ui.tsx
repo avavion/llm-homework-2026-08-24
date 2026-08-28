@@ -1,6 +1,6 @@
 import { forwardRef, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { ChefHat, ChevronRight, FileText, Package, Camera, Plus, Settings as SettingsIcon, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, ChefHat, ChevronRight, FileText, Info, Package, Camera, Plus, Settings as SettingsIcon, X } from 'lucide-react'
 import { statusLabel as localizedStatusLabel, t } from './i18n'
 
 export type Status = 'active' | 'attention' | 'expired' | 'used' | 'discarded' | 'research_required'
@@ -19,8 +19,11 @@ export function StatusBadge({ status }: { status: Status }) {
     return <span className={`badge badge--${badgeTone[status]}`}><i className="badge__dot" aria-hidden="true" />{statusLabel(status)}</span>
 }
 
+const alertIcon = { info: Info, warning: AlertTriangle, danger: AlertCircle }
+
 export function Alert({ tone = 'info', children }: { tone?: 'info' | 'warning' | 'danger'; children: ReactNode }) {
-    return <div className={`alert alert--${tone}`} role={tone === 'danger' ? 'alert' : 'status'}>{children}</div>
+    const Icon = alertIcon[tone]
+    return <div className={`alert alert--${tone}`} role={tone === 'danger' ? 'alert' : 'status'}><Icon className="alert__icon" aria-hidden="true" size={18} /><span>{children}</span></div>
 }
 
 export function Skeleton() {
@@ -28,7 +31,19 @@ export function Skeleton() {
 }
 
 export function EmptyState({ children, action }: { children: ReactNode; action?: ReactNode }) {
-    return <section className="empty-state"><p>{children}</p>{action}</section>
+    return <section className="empty-state"><span className="empty-icon" aria-hidden="true"><Package size={22} /></span><p>{children}</p>{action}</section>
+}
+
+// Decorative section transition echoing the wavy dashed dividers from the
+// design reference. Purely presentational (aria-hidden); `to` names the CSS
+// custom property the wave reveals underneath the band it sits on.
+export function WaveDivider({ to = '--canvas' }: { to?: string }) {
+    return (
+        <svg className="wave-divider" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M0,24 C120,50 240,-4 360,24 C480,52 600,-4 720,24 C840,52 960,-4 1080,24 C1200,52 1320,-4 1440,24 L1440,60 L0,60 Z" fill={`var(${to})`} />
+            <path d="M0,24 C120,50 240,-4 360,24 C480,52 600,-4 720,24 C840,52 960,-4 1080,24 C1200,52 1320,-4 1440,24" fill="none" stroke="var(--brand-strong)" strokeOpacity="0.55" strokeWidth="2.5" strokeDasharray="8 7" strokeLinecap="round" />
+        </svg>
+    )
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, {
