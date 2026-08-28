@@ -32,9 +32,7 @@ for (const viewport of [
     await expect(page.getByRole('button', { name: /добавить продукт|add product/i })).toBeVisible()
     await expect(page.getByRole('navigation')).toBeVisible()
     expect(await page.locator('html').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
-    if (viewport.name !== 'desktop-1280') {
-      await expect(page).toHaveScreenshot(`inventory-${viewport.name}.png`, { fullPage: true })
-    }
+    await expect(page).toHaveScreenshot(`inventory-${viewport.name}.png`, { fullPage: true })
   })
 }
 
