@@ -10,8 +10,8 @@ async function login(page: import('@playwright/test').Page) {
     } as DateConstructor
   })
   await page.goto('/login')
-  await page.getByLabel('E-mail').fill('playwright@example.com')
-  await page.getByLabel('Пароль').fill('password123')
+  await page.getByLabel(/e-mail|email/i).fill('playwright@example.com')
+  await page.getByLabel(/пароль|password/i).fill('password123')
   await page.getByRole('button', { name: /войти|sign in/i }).click()
   await expect(page).toHaveURL(/\/$/)
 }
@@ -19,15 +19,22 @@ async function login(page: import('@playwright/test').Page) {
 for (const viewport of [
   { name: 'mobile', width: 320, height: 740 },
   { name: 'tablet', width: 768, height: 900 },
+  { name: 'desktop-1280', width: 1280, height: 960 },
   { name: 'desktop', width: 1440, height: 960 },
 ]) {
   test(`inventory remains usable on ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     await login(page)
+    if (viewport.name === 'desktop-1280') {
+      const shellWidth = await page.locator('.shell').evaluate((element) => element.getBoundingClientRect().width)
+      expect(shellWidth).toBeGreaterThanOrEqual(1216)
+    }
     await expect(page.getByRole('button', { name: /добавить продукт|add product/i })).toBeVisible()
     await expect(page.getByRole('navigation')).toBeVisible()
     expect(await page.locator('html').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
-    await expect(page).toHaveScreenshot(`inventory-${viewport.name}.png`, { fullPage: true })
+    if (viewport.name !== 'desktop-1280') {
+      await expect(page).toHaveScreenshot(`inventory-${viewport.name}.png`, { fullPage: true })
+    }
   })
 }
 
