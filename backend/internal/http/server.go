@@ -11,6 +11,7 @@ import (
 	"llm-homework/backend/internal/account"
 	"llm-homework/backend/internal/auth"
 	"llm-homework/backend/internal/product"
+	"llm-homework/backend/internal/profile"
 	"llm-homework/backend/internal/recipe"
 	"llm-homework/backend/internal/recognition"
 	"llm-homework/backend/internal/regulation"
@@ -40,6 +41,7 @@ func NewServer(db *sql.DB, allowedOrigins []string, recognitionProvider string) 
 
 	productService := product.NewService(product.NewRepository(db))
 	rules := regulation.NewRepository()
+	profile.RegisterRoutes(authenticated, profile.NewService(profile.NewRepository(db), rules), resolveAccount)
 	product.RegisterRoutes(authenticated, productService, resolveAccount, product.DisplayStatusFunc(func(item product.Product) product.DisplayStatus {
 		return displayStatusFor(item, rules, time.Now())
 	}))

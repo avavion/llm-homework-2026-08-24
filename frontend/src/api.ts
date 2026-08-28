@@ -26,6 +26,8 @@ export type ApiProduct = {
   name: string
   date_type: Product['dateType']
   expiry_date: string
+  quantity?: number
+  unit?: string
   product_group?: string
   storage_location?: string
   status: 'active' | 'used' | 'discarded'
@@ -33,6 +35,8 @@ export type ApiProduct = {
   display_status?: Product['status']
 }
 type Account = { id: string; email: string }
+export type Profile = { country_code: string; language: 'ru' | 'en'; regulator_group?: string }
+export type NotificationSetting = { product_group: string; alert_threshold_minutes: number }
 type ApiDraftFields = {
   Name?: string | null
   DateType?: Product['dateType'] | null
@@ -50,6 +54,8 @@ export const fromApiProduct = (item: ApiProduct): Product => ({
   expiryDate: dateOnly(item.expiry_date),
   group: item.product_group ?? '',
   location: item.storage_location ?? '',
+  quantity: item.quantity,
+  unit: item.unit,
   status: item.display_status ?? item.status,
 })
 export const fromBackendDraft = (draft: ApiDraft): { id: string; status: ApiDraft['status']; fields: DraftFields } => ({
@@ -69,6 +75,9 @@ export const toBackendProductPayload = (input: ProductInput) => ({
   expiry_date: `${input.expiryDate}T00:00:00Z`,
   product_group: input.group || undefined,
   storage_location: input.location || undefined,
+  country_code: input.countryCode || undefined,
+  quantity: input.quantity,
+  unit: input.unit || undefined,
 })
 
 export const api = {
@@ -83,6 +92,14 @@ export const api = {
     login: (email: string, password: string) => apiMode === 'fixture' ? fixtureApi.auth.login(email, password) : request<Account>('/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
     logout: () => apiMode === 'fixture' ? fixtureApi.auth.logout() : request<void>('/v1/auth/logout', { method: 'POST' }),
     session: () => apiMode === 'fixture' ? fixtureApi.auth.session() : request<Account>('/v1/auth/session'),
+  },
+  profile: {
+    get: () => apiMode === 'fixture' ? fixtureApi.profile.get() : request<Profile>('/v1/profile'),
+    save: (input: Pick<Profile, 'country_code' | 'language'>) => apiMode === 'fixture' ? fixtureApi.profile.save(input) : request<Profile>('/v1/profile', { method: 'PUT', body: JSON.stringify(input) }),
+  },
+  notifications: {
+    list: () => apiMode === 'fixture' ? fixtureApi.notifications.list() : request<{ settings: NotificationSetting[] }>('/v1/notification-settings'),
+    save: (input: NotificationSetting) => apiMode === 'fixture' ? fixtureApi.notifications.save(input) : request<{ settings: NotificationSetting[] }>('/v1/notification-settings', { method: 'PUT', body: JSON.stringify(input) }),
   },
   drafts: {
     recognize: (file: File) => apiMode === 'fixture' ? fixtureApi.drafts.recognize(file) : (() => { const form = new FormData(); form.append('image', file); form.append('locale', navigator.language); return request<ApiDraft>('/v1/product-drafts/recognize', { method: 'POST', body: form, headers: {} }).then(fromBackendDraft) })(),

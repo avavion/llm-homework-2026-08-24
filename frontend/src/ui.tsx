@@ -1,17 +1,9 @@
-import { forwardRef, type ReactNode, useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { forwardRef, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { ChefHat, ChevronRight, FileText, Package, Camera, Plus, Settings as SettingsIcon, X } from 'lucide-react'
-import { t } from './i18n'
+import { statusLabel as localizedStatusLabel, t } from './i18n'
 
 export type Status = 'active' | 'attention' | 'expired' | 'used' | 'discarded' | 'research_required'
-const labels: Record<Status, string> = {
-    active: 'Активен',
-    attention: 'Требует внимания',
-    expired: 'Срок истёк',
-    used: 'Использован',
-    discarded: 'Выброшен',
-    research_required: 'Правило уточняется',
-}
 const badgeTone: Record<Status, 'active' | 'attention' | 'expired' | 'neutral' | 'info'> = {
     active: 'active',
     attention: 'attention',
@@ -21,10 +13,10 @@ const badgeTone: Record<Status, 'active' | 'attention' | 'expired' | 'neutral' |
     research_required: 'info',
 }
 
-export const statusLabel = (status: Status) => labels[status]
+export const statusLabel = (status: Status) => localizedStatusLabel(status)
 
 export function StatusBadge({ status }: { status: Status }) {
-    return <span className={`badge badge--${badgeTone[status]}`}><i className="badge__dot" aria-hidden="true" />{labels[status]}</span>
+    return <span className={`badge badge--${badgeTone[status]}`}><i className="badge__dot" aria-hidden="true" />{statusLabel(status)}</span>
 }
 
 export function Alert({ tone = 'info', children }: { tone?: 'info' | 'warning' | 'danger'; children: ReactNode }) {
@@ -53,24 +45,37 @@ export const IconButton = forwardRef<HTMLButtonElement, {
 )
 IconButton.displayName = 'IconButton'
 
-export function AddProductSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+export function AddProductSheet({ open, onClose, returnFocusRef }: { open: boolean; onClose: () => void; returnFocusRef: RefObject<HTMLButtonElement | null> }) {
+    const dialogRef = useRef<HTMLElement>(null)
+    const closeRef = useRef<HTMLButtonElement>(null)
+    const titleId = useId()
     useEffect(() => {
         if (!open) return
+        closeRef.current?.focus()
         const close = (event: KeyboardEvent) => {
             if (event.key === 'Escape') onClose()
+            if (event.key !== 'Tab') return
+            const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])
+            if (focusable.length === 0) { event.preventDefault(); return }
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+            if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
         }
         document.addEventListener('keydown', close)
-        return () => document.removeEventListener('keydown', close)
-    }, [open, onClose])
+        return () => { document.removeEventListener('keydown', close); returnFocusRef.current?.focus() }
+    }, [open, onClose, returnFocusRef])
     if (!open) return null
     return (
         <div className="sheet-backdrop" onMouseDown={onClose}>
-            <section className="add-sheet" role="dialog" aria-modal="true" aria-label={t.add}
+            <section ref={dialogRef} className="add-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}
                       onMouseDown={(event) => event.stopPropagation()}>
                 <div className="sheet-handle" aria-hidden="true" />
                 <div className="sheet-head">
-                    <div><h2>{t.add}</h2><p>{t.chooseAddMethod}</p></div>
-                    <IconButton label={t.close} className="sheet-close" onClick={onClose}><X size={18} /></IconButton>
+                    <div><h2 id={titleId}>{t.add}</h2><p>{t.chooseAddMethod}</p></div>
+                    <IconButton ref={closeRef} label={t.close} className="sheet-close" onClick={onClose}><X size={18} /></IconButton>
                 </div>
                 <Link className="add-option" to="/products/new" onClick={onClose}>
                     <span className="option-icon"><FileText size={20} /></span>
@@ -123,10 +128,18 @@ export function AppShell({ children, railFooter, addOpen, onOpenAdd, onCloseAdd 
     const isMobile = useIsMobile()
     const trigger = useRef<HTMLButtonElement>(null)
     const location = useLocation()
+    const navigate = useNavigate()
+    const [toasts, setToasts] = useState<Toast[]>([])
     const crumb = location.pathname === '/recipes' ? t.recipes : location.pathname === '/settings' ? t.settings : t.products
     useEffect(() => {
-        if (!addOpen) trigger.current?.focus()
-    }, [addOpen])
+        const notice = (location.state as { notice?: string } | null)?.notice
+        if (!notice) return
+        const id = globalThis.crypto?.randomUUID?.() ?? `toast-${Date.now()}`
+        setToasts((current) => [...current, { id, message: notice }])
+        navigate(location.pathname, { replace: true, state: null })
+        const timer = window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), 5_000)
+        return () => window.clearTimeout(timer)
+    }, [location.pathname, location.state, navigate])
     return (
         <>
             <a className="skip" href="#main-content">Skip to content</a>
@@ -158,7 +171,8 @@ export function AppShell({ children, railFooter, addOpen, onOpenAdd, onCloseAdd 
                     {children}
                 </main>
             </div>
-            <AddProductSheet open={addOpen} onClose={onCloseAdd} />
+            <AddProductSheet open={addOpen} onClose={onCloseAdd} returnFocusRef={trigger} />
+            <ToastRegion toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
         </>
     )
 }

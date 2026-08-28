@@ -65,3 +65,17 @@ func (repository *Repository) RuleFor(countryCode string, dateType product.DateT
 	rule, ok := byDateType[dateType]
 	return rule, ok
 }
+
+// RegulatorGroupForCountry exposes only the reviewed group association used by
+// the registry. An unlisted country intentionally has no group instead of a
+// guessed legal classification.
+func (repository *Repository) RegulatorGroupForCountry(countryCode string) string {
+	byDateType, ok := repository.rules[countryCode]
+	if !ok {
+		return ""
+	}
+	for _, rule := range byDateType {
+		return rule.RegulatorGroup
+	}
+	return ""
+}
