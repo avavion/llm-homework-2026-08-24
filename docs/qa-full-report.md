@@ -113,11 +113,69 @@
 4. Запустить `make up` в окружении с Go и Docker, затем выполнить real-API E2E с `VITE_API_URL`, проверить secure cookie, CORS, 401/403/404/409 и network retry.
 5. Закрыть UX-долг: success toast, auth field feedback, destructive confirmation, recipe explanation и optional product details. Затем обновить visual baselines после выравнивания с Premium Redesign.
 
+## Повторный цикл — 28.08.2026
+
+### Проверенные исправления
+
+| Предыдущий пункт | Результат повторной проверки | Доказательство |
+| --- | --- | --- |
+| QA-CRIT-01: profile/settings отсутствовали | Исправлено на уровне кода и контрактов | `GET`/`PUT /v1/profile` и `GET`/`PUT /v1/notification-settings` зарегистрированы в `backend/internal/profile/http.go` и `server.go`; есть account-scoped unit-тесты и миграция `000006_account_profiles_settings.up.sql`; frontend вызывает оба контракта. |
+| Country propagation | Исправлено на уровне клиента | `ProductForm` загружает profile и передаёт `countryCode` как в direct create, так и в draft approve; `toBackendProductPayload` сериализует `country_code`. |
+| QA-CRIT-02: ru/en consistency | Исправлено в production-коде | Status labels, date labels, fixture names и form copy переведены в `i18n.ts`; source scan не выявил hard-coded Russian user copy вне i18n (кроме названий языков в selector и fallback API message). |
+| QA-CRIT-03: add-product sheet a11y | Исправлено для add-product sheet | Add sheet использует `aria-labelledby`, initial focus на close button, Tab/Shift+Tab focus trap и return focus. Lifecycle confirmation проверен отдельно ниже. |
+| Destructive action confirmation и success feedback | Исправлено | Lifecycle actions открывают confirmation dialog; `ToastRegion` подключён и обрабатывает navigation notice. |
+
+### Выполненные проверки
+
+- `npm run lint` — passed.
+- `npm run test` — passed, 11/11.
+- `npm run build` — passed.
+- Стандартный `npm run test:e2e` не начал тесты: порт 4173 уже занят внешним Vite-process.
+- Изолированный повтор Playwright на 4174 выявил regression в существующем E2E: suite жёстко ищет русские labels `E-mail`/`Пароль`, а текущий Chromium запускает английскую locale и корректно рендерит `Email`/`Password`. Два теста завершились по timeout; остальные не были надёжно выполнены. Это дефект тестовой автоматизации, не доказательство смешанной локализации продукта.
+- Real API и Go/Docker smoke не выполнены: API на `127.0.0.1:8080` не запущен, Go toolchain и Docker отсутствуют. Этот факт остаётся environment blocker.
+
+### Новые/неустранённые блокеры
+
+#### QA-REPEAT-CRIT-01 — WCAG AA contrast по-прежнему не выполняется
+
+- `tokens.scss` и `global.scss` не изменены в проблемной части. Контрасты обычного статусного/вторичного текста по-прежнему ниже 4.5:1: muted 4.06:1, active 4.03:1, attention 4.16:1, danger 4.44:1.
+- Статус: не исправлено. Блокирует релиз, поскольку предупреждения о сроках являются ключевой информацией.
+
+#### QA-REPEAT-CRIT-02 — Настройки e-mail-напоминаний не применяются к продуктам
+
+- `PUT /v1/notification-settings` сохраняет account-scoped overrides в `account_notification_settings`, но `notification.Service` читает только `products.alert_threshold_minutes` и product-group defaults. Ни frontend, ни product API не передают сохранённую account setting в `alert_threshold_minutes` при create/approve.
+- Worker корректно запускается в `backend/cmd/api/main.go`; проблема находится на границе persisted settings → product scheduling, а не в запуске worker.
+- Ожидается: сохранённый user threshold применяется к вновь созданным (и согласованно к существующим) продуктам либо scheduler читает account settings.
+- Статус: подтверждённый critical backend/integration defect. UI создаёт ложное впечатление работающих напоминаний.
+
+#### QA-REPEAT-CRIT-03 — Confirmation dialog для lifecycle не удерживает фокус
+
+- `LifecycleDialog` имеет `aria-labelledby`, initial focus и `Escape`, но отсутствует обработка `Tab`/`Shift+Tab`; фокус может перейти к фоновому интерфейсу.
+- Ожидается: одинаковый focus-trap contract для всех modal dialogs, а не только для add-product sheet.
+- Статус: critical a11y defect для destructive action.
+
+#### QA-REPEAT-NONCRIT-01 — E2E suite не детерминирована по locale
+
+- Existing `frontend/e2e/inventory.spec.ts` использует жёсткие русские labels/expectations, но не фиксирует browser locale. При `en` локали login page корректно содержит `Email`/`Password`, поэтому `getByLabel('E-mail')` и `getByLabel('Пароль')` never resolve.
+- Ожидается: Playwright projects для `ru-RU` и `en-US`, либо locale-independent locators; добавить обе проверки в CI.
+
+#### QA-REPEAT-NONCRIT-02 — User-facing names notification groups не локализованы
+
+- Settings UI выводит raw protocol values (`refrigerated_perishable`, `fresh_produce` и т. п.), хотя для них есть локализованные copy keys в `i18n.ts`.
+- Ожидается: отображать человекочитаемые локализованные названия, оставляя protocol value только внутри API.
+
+## Итог повторного цикла
+
+- Исправлено из исходного отчёта: 5 пунктов (profile/settings contracts, country propagation, локализация в production code, modal a11y, confirmation/toast).
+- Не устранено: WCAG AA contrast.
+- Новых/неустранённых критических: 3 (contrast, notification setting integration, lifecycle confirmation focus trap).
+- Environment blocker: real API/Go/Docker smoke по-прежнему недоступен.
+- Статус: FAILED — к релизу не готов до исправления QA-REPEAT-CRIT-01 и QA-REPEAT-CRIT-02, обновления E2E locale coverage и повторного доступного real-API smoke.
+
 ## Итог
 
-- Всего багов: 10
-- Критических: 5 (из них 1 блокер окружения, не дефект кода)
-- Некритических: 5
-- Статус: FAILED
+- Исторический первый цикл: 10 пунктов (5 критических, включая 1 environment blocker; 5 некритических).
+- Актуальный repeat-release gate: 3 критических дефекта приложения, 2 некритических замечания и 1 environment blocker.
+- Статус: FAILED; детальные актуальные результаты приведены в разделе «Повторный цикл — 28.08.2026».
 
 Релиз не рекомендован до устранения QA-CRIT-01…QA-CRIT-04 и проведения повторного real-API прогона после устранения QA-CRIT-05.

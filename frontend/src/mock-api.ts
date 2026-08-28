@@ -12,7 +12,7 @@ let products: Product[] = [
   { id: 'fish', name: t.fixtureFish, location: t.fixtureFreezer, group: t.fixtureFishGroup, dateType: 'use_by', expiryDate: '2026-08-24', status: 'expired' },
 ]
 let session: { id: string; email: string } | null = null
-let profile = { country_code: 'DE', language: navigator.language.startsWith('ru') ? 'ru' : 'en', regulator_group: 'eu_1169_2011' }
+let profile: { country_code: string; language: 'ru' | 'en'; regulator_group: string } = { country_code: 'DE', language: navigator.language.startsWith('ru') ? 'ru' : 'en', regulator_group: 'eu_1169_2011' }
 let notificationSettings = [
   { product_group: 'refrigerated_perishable', alert_threshold_minutes: 4320 },
   { product_group: 'fresh_produce', alert_threshold_minutes: 2880 },

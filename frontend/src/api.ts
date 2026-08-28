@@ -94,8 +94,8 @@ export const api = {
     session: () => apiMode === 'fixture' ? fixtureApi.auth.session() : request<Account>('/v1/auth/session'),
   },
   profile: {
-    get: () => apiMode === 'fixture' ? fixtureApi.profile.get() : request<Profile>('/v1/profile'),
-    save: (input: Pick<Profile, 'country_code' | 'language'>) => apiMode === 'fixture' ? fixtureApi.profile.save(input) : request<Profile>('/v1/profile', { method: 'PUT', body: JSON.stringify(input) }),
+    get: async (): Promise<Profile> => apiMode === 'fixture' ? fixtureApi.profile.get() : request<Profile>('/v1/profile'),
+    save: async (input: Pick<Profile, 'country_code' | 'language'>): Promise<Profile> => apiMode === 'fixture' ? fixtureApi.profile.save(input) : request<Profile>('/v1/profile', { method: 'PUT', body: JSON.stringify(input) }),
   },
   notifications: {
     list: () => apiMode === 'fixture' ? fixtureApi.notifications.list() : request<{ settings: NotificationSetting[] }>('/v1/notification-settings'),
