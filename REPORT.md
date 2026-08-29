@@ -56,19 +56,16 @@ refused до обработчиков; прикладные endpoint’ы, из�
   интеграционные runtime-проверки блокируются.
 - Реальный OCR/LLM-провайдер по умолчанию не настроен; распознавание фото не
   следует считать работающим production-сценарием.
-- `python3 scripts/validate_session_reports.py --project-root .` действительно
-  находит неполные исторические отчёты, в том числе
-  [`sessions/session-2026-08-26-151506.md`](sessions/session-2026-08-26-151506.md),
-  [`sessions/session-2026-08-26-222708.md`](sessions/session-2026-08-26-222708.md)
-  и [`frontend/sessions/session-2026-08-26-231136.md`](frontend/sessions/session-2026-08-26-231136.md).
-- Перед сдачей нужно разобрать незакоммиченные файлы, замеченные через
-  `git status --short`: `README.md`, `REPORT.md`, `WORKFLOW.md`,
-  `docs/independent-negative-test-report-2026-08-28.md`,
-  `sessions/session-2026-08-28-225625.md`,
-  `sessions/session-2026-08-28-230019.md`,
-  `sessions/session-2026-08-28-230316.md`,
-  `sessions/session-2026-08-28-232908.md` и
-  `sessions/session-2026-08-28-233253.md`.
+- 2026-08-29 архивированы 12 пустых шаблонных session reports: 11 корневых и
+  1 frontend. Их исходные пути, новые пути и причины сохранены в
+  [корневом архиве](sessions/archive/incomplete/README.md) и
+  [frontend-архиве](frontend/sessions/archive/incomplete/README.md).
+  В исходном списке невалидных отчётов не найдено
+  `incomplete-meaningful` сессий: содержательные отчёты не перемещались.
+- Перед сдачей нужно разобрать текущее рабочее дерево: `REPORT.md`, 12
+  переименований session reports в архивы, два новых архивных README и
+  журнал текущей сессии. Точный набор следует сверять непосредственно перед
+  commit командой `git status --short`.
 
 ## 6. Проверки и следующий шаг
 
